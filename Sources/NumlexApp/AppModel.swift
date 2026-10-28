@@ -722,12 +722,10 @@ final class AppModel {
     /// the same edit path as typing so line identities and tokens reconcile.
     func appendLine(_ text: String) {
         guard let sheet = selectedSheet else { return }
-        let edit = ClipboardInsertion.appendEdit(content: sheet.content, text: text)
-        guard !edit.replacement.isEmpty else { return }
-        let content = sheet.content + edit.replacement
-        updateContent(content, edit: NotebookEdit(range: edit.range, replacement: edit.replacement))
+        guard let plan = ClipboardInsertion.appendPlan(content: sheet.content, text: text) else { return }
+        updateContent(plan.content, edit: plan.edit)
         focusSheetID = sheet.id
-        focusCaret = (content as NSString).length
+        focusCaret = plan.caret
     }
 
     /// Registers references born from an internal paste; the editor has

@@ -143,21 +143,27 @@ public let clipboardCases: [EngineCase] = [
 public let clipboardInsertionCases: [EngineCase] = [
 
     EngineCase("clipboard-insert-appends-as-new-line") {
-        let e = ClipboardInsertion.appendEdit(content: "1 + 1", text: "2 * 3")
-        try expectEqual(e.replacement, "\n2 * 3", "new line")
-        try expectEqual(e.range, NSRange(location: 5, length: 0), "at the end")
+        let p = ClipboardInsertion.appendPlan(content: "1 + 1", text: "2 * 3")
+        try expectEqual(p?.content, "1 + 1\n2 * 3", "new line")
+        try expectEqual(p?.edit, NotebookEdit(range: NSRange(location: 5, length: 0), replacement: "\n2 * 3"),
+                        "edit at the end")
+        try expectEqual(p?.caret, 11, "caret after the new text")
     },
 
     EngineCase("clipboard-insert-fills-trailing-empty-line-and-empty-sheet") {
-        try expectEqual(ClipboardInsertion.appendEdit(content: "a\n", text: "b").replacement, "b",
+        try expectEqual(ClipboardInsertion.appendPlan(content: "a\n", text: "b")?.content, "a\nb",
                         "trailing empty line is reused")
-        try expectEqual(ClipboardInsertion.appendEdit(content: "", text: "b").replacement, "b",
+        try expectEqual(ClipboardInsertion.appendPlan(content: "", text: "b")?.content, "b",
                         "empty sheet")
     },
 
     EngineCase("clipboard-insert-normalizes-text") {
-        let e = ClipboardInsertion.appendEdit(content: "x", text: "a\u{FFFC}b\r\nc\n\n")
-        try expectEqual(e.replacement, "\nab\nc", "marker stripped, CRLF folded, trailing newlines trimmed")
+        let p = ClipboardInsertion.appendPlan(content: "x", text: "a\u{FFFC}b\r\nc\n\n")
+        try expectEqual(p?.content, "x\nab\nc", "marker stripped, CRLF folded, trailing newlines trimmed")
+    },
+
+    EngineCase("clipboard-insert-nothing-yields-no-plan") {
+        try expect(ClipboardInsertion.appendPlan(content: "x\n", text: "\n\u{FFFC}") == nil, "empty after cleaning")
     },
 ]
 
