@@ -389,4 +389,9 @@ struct EngineTests {
     func clipboardInsertionCase(`case`: EngineCase) throws {
         try `case`.body()
     }
+
+    @Test(arguments: clipboardLocalizationCases)
+    func clipboardLocalizationCase(`case`: EngineCase) throws {
+        try `case`.body()
+    }
 }

@@ -160,3 +160,17 @@ public let clipboardInsertionCases: [EngineCase] = [
         try expectEqual(e.replacement, "\nab\nc", "marker stripped, CRLF folded, trailing newlines trimmed")
     },
 ]
+
+public let clipboardLocalizationCases: [EngineCase] = [
+    EngineCase("clipboard-strings-exist-in-all-six-locales") {
+        let keys = L10n.translations[.en]!.keys.filter { $0.hasPrefix("clipboard.") }
+        try expect(keys.count >= 15, "english clipboard keys present")
+        for language in AppLanguage.allCases {
+            for key in keys {
+                let value = L10n.translations[language]?[key] ?? ""
+                try expect(!value.isEmpty, "\(language) is missing \(key)")
+            }
+        }
+        try expectEqual(L10n.t("clipboard.title", language: .zh), "剪贴板", "zh title")
+    },
+]
