@@ -148,100 +148,7 @@ struct SidebarView: View {
             if showsClipboard {
                 ClipboardListView(model: model, store: clipboard)
             } else {
-            // The action row: the original full-width New Sheet button
-            // alone (folder creation lives on the hover + of the tabs).
-            Button {
-                model.newSheet()
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus.capsule")
-                    Text(L10n.t("newSheet", language: language))
-                        .font(.system(size: 13, weight: .semibold))
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 7)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            // r52 (Tahoe fix): the SAME single-glass-surface primitive the
-            // sheet rows and folder tabs use — one untinted Liquid Glass
-            // layer with the graphite wash composited underneath by a
-            // normal shape fill. No direct `.tint` path, no second
-            // material, no hit-testing change, no layout change.
-            .modifier(SidebarGlassSurface(role: .selected, shape: sidebarButtonShape))
-            .help(L10n.t("newSheet", language: language))
-
-            // A hairline between the action row and the list: the
-            // native Divider only — no glass, no material, no custom
-            // rectangle. Inset 4 pt per side so it sits optically
-            // inside the sidebar padding.
-            Divider()
-                .padding(.horizontal, 4)
-
-            // The upper sheet list: the sheets of the ACTIVE tab only —
-            // no group headers, no nesting, no disclosure state. A plain
-            // (non-lazy) VStack is DELIBERATE: sheet rows are lightweight
-            // sidebar metadata and coherent full-list reflow (tab switch,
-            // insert, remove, move) matters more than lazy realization.
-            // 50-row lists stay cheap: each row is two text lines and one
-            // optional glass pill. The list takes the flexible remaining
-            // height between the action row and the bottom tabs.
-            ScrollView {
-                let entries = model.sheets(in: model.activeGroupID)
-                VStack(spacing: 5) {
-                    if entries.isEmpty {
-                        // A calm localized empty state — no auto-created
-                        // sheet, no faked selection.
-                        Text(L10n.t("folderEmpty", language: language))
-                            .font(.system(size: 12))
-                            .foregroundStyle(.tertiary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.top, 28)
-                    } else {
-                        ForEach(entries, id: \.sheet.id) { entry in
-                            sheetRow(idx: entry.index, sheet: entry.sheet)
-                                .transition(reduceMotion ? .identity : sectionTransition)
-                        }
-                    }
-                }
-                // Row insertion/removal/move/tab-switch animates ONLY
-                // inside this list: the transaction is scoped here, so
-                // the editor and answer column (which also observe the
-                // model) never pick up an animated transaction. 0.34 s
-                // keeps the reflow visibly progressive at 60 fps without
-                // bounce; reduceMotion gets no decorative animation.
-                .animation(reduceMotion ? nil : .snappy(duration: 0.34),
-                           value: visibleSignature)
-                .padding(.vertical, 2)
-            }
-            .scrollIndicators(.hidden)
-            .background(NativeScrollerSuppressor())
-            .frame(maxHeight: .infinity)
-            // Any deletion path that removes the row currently being
-            // renamed clears the stale rename state.
-            .onChange(of: model.sheets.map(\.id)) { _, ids in
-                if let rid = renamingID, !ids.contains(rid) { renamingID = nil }
-            }
-            // A folder going away clears a stale rename, repairs the
-            // active tab (an invalid folder always falls back to
-            // General) and drops hover state that could point at a
-            // stale row (r41).
-            .onChange(of: model.folders.map(\.id)) { _, ids in
-                if let fid = renamingFolderID, !ids.contains(fid) {
-                    renamingFolderID = nil
-                }
-                model.repairActiveGroup()
-                cleanStaleHover(ids: ids)
-            }
-
-            // The native inset hairline separating the scrolling sheets
-            // from the pinned tab strip.
-            Divider()
-                .padding(.horizontal, 4)
-
-            // The pinned bottom folder tabs.
-            folderTabs
-
+                sheetsPanel
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -264,6 +171,103 @@ struct SidebarView: View {
                 .ignoresSafeArea(edges: .vertical)
                 .allowsHitTesting(false)
         }
+    }
+
+    @ViewBuilder
+    private var sheetsPanel: some View {
+        // The action row: the original full-width New Sheet button
+        // alone (folder creation lives on the hover + of the tabs).
+        Button {
+            model.newSheet()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "plus.capsule")
+                Text(L10n.t("newSheet", language: language))
+                    .font(.system(size: 13, weight: .semibold))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 7)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        // r52 (Tahoe fix): the SAME single-glass-surface primitive the
+        // sheet rows and folder tabs use — one untinted Liquid Glass
+        // layer with the graphite wash composited underneath by a
+        // normal shape fill. No direct `.tint` path, no second
+        // material, no hit-testing change, no layout change.
+        .modifier(SidebarGlassSurface(role: .selected, shape: sidebarButtonShape))
+        .help(L10n.t("newSheet", language: language))
+
+        // A hairline between the action row and the list: the
+        // native Divider only — no glass, no material, no custom
+        // rectangle. Inset 4 pt per side so it sits optically
+        // inside the sidebar padding.
+        Divider()
+            .padding(.horizontal, 4)
+
+        // The upper sheet list: the sheets of the ACTIVE tab only —
+        // no group headers, no nesting, no disclosure state. A plain
+        // (non-lazy) VStack is DELIBERATE: sheet rows are lightweight
+        // sidebar metadata and coherent full-list reflow (tab switch,
+        // insert, remove, move) matters more than lazy realization.
+        // 50-row lists stay cheap: each row is two text lines and one
+        // optional glass pill. The list takes the flexible remaining
+        // height between the action row and the bottom tabs.
+        ScrollView {
+            let entries = model.sheets(in: model.activeGroupID)
+            VStack(spacing: 5) {
+                if entries.isEmpty {
+                    // A calm localized empty state — no auto-created
+                    // sheet, no faked selection.
+                    Text(L10n.t("folderEmpty", language: language))
+                        .font(.system(size: 12))
+                        .foregroundStyle(.tertiary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 28)
+                } else {
+                    ForEach(entries, id: \.sheet.id) { entry in
+                        sheetRow(idx: entry.index, sheet: entry.sheet)
+                            .transition(reduceMotion ? .identity : sectionTransition)
+                    }
+                }
+            }
+            // Row insertion/removal/move/tab-switch animates ONLY
+            // inside this list: the transaction is scoped here, so
+            // the editor and answer column (which also observe the
+            // model) never pick up an animated transaction. 0.34 s
+            // keeps the reflow visibly progressive at 60 fps without
+            // bounce; reduceMotion gets no decorative animation.
+            .animation(reduceMotion ? nil : .snappy(duration: 0.34),
+                       value: visibleSignature)
+            .padding(.vertical, 2)
+        }
+        .scrollIndicators(.hidden)
+        .background(NativeScrollerSuppressor())
+        .frame(maxHeight: .infinity)
+        // Any deletion path that removes the row currently being
+        // renamed clears the stale rename state.
+        .onChange(of: model.sheets.map(\.id)) { _, ids in
+            if let rid = renamingID, !ids.contains(rid) { renamingID = nil }
+        }
+        // A folder going away clears a stale rename, repairs the
+        // active tab (an invalid folder always falls back to
+        // General) and drops hover state that could point at a
+        // stale row (r41).
+        .onChange(of: model.folders.map(\.id)) { _, ids in
+            if let fid = renamingFolderID, !ids.contains(fid) {
+                renamingFolderID = nil
+            }
+            model.repairActiveGroup()
+            cleanStaleHover(ids: ids)
+        }
+
+        // The native inset hairline separating the scrolling sheets
+        // from the pinned tab strip.
+        Divider()
+            .padding(.horizontal, 4)
+
+        // The pinned bottom folder tabs.
+        folderTabs
     }
 
     /// The shared row transition: insertion is the standard top entry
