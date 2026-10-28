@@ -423,7 +423,7 @@ struct ContentView: View {
             // print panel on the NEXT main-run-loop turn, so the host
             // window (never the dismissing sheet) owns the modal panel.
             let hostWindow = NSApp.windows.first {
-                $0.isVisible && $0.title == "Numlex"
+                $0.isVisible && $0.title == "Numlex".title == "Numlex" || $0.title == "Numlex".title == "Adjutant"
             } ?? NSApp.mainWindow
             DispatchQueue.main.async {
                 let info = (NSPrintInfo.shared.copy() as? NSPrintInfo) ?? NSPrintInfo()
