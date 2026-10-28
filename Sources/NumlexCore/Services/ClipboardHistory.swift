@@ -199,3 +199,18 @@ public enum ClipboardPersistence {
         return d
     }
 }
+
+/// Pure planning for "insert this clipboard item into the sheet as a new line".
+public enum ClipboardInsertion {
+    /// The replacement to append at the end of `content`, and its range
+    /// (a zero-length range at the end). U+FFFC is stripped because it is
+    /// reserved for answer tokens.
+    public static func appendEdit(content: String, text: String) -> (replacement: String, range: NSRange) {
+        var clean = text.replacingOccurrences(of: "\u{FFFC}", with: "")
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        while clean.hasSuffix("\n") { clean.removeLast() }
+        let lead = (content.isEmpty || content.hasSuffix("\n")) ? "" : "\n"
+        return (lead + clean, NSRange(location: (content as NSString).length, length: 0))
+    }
+}

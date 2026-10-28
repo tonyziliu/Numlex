@@ -139,3 +139,24 @@ public let clipboardCases: [EngineCase] = [
         try expectEqual(h.settings, ClipboardSettings(), "defaults")
     },
 ]
+
+public let clipboardInsertionCases: [EngineCase] = [
+
+    EngineCase("clipboard-insert-appends-as-new-line") {
+        let e = ClipboardInsertion.appendEdit(content: "1 + 1", text: "2 * 3")
+        try expectEqual(e.replacement, "\n2 * 3", "new line")
+        try expectEqual(e.range, NSRange(location: 5, length: 0), "at the end")
+    },
+
+    EngineCase("clipboard-insert-fills-trailing-empty-line-and-empty-sheet") {
+        try expectEqual(ClipboardInsertion.appendEdit(content: "a\n", text: "b").replacement, "b",
+                        "trailing empty line is reused")
+        try expectEqual(ClipboardInsertion.appendEdit(content: "", text: "b").replacement, "b",
+                        "empty sheet")
+    },
+
+    EngineCase("clipboard-insert-normalizes-text") {
+        let e = ClipboardInsertion.appendEdit(content: "x", text: "a\u{FFFC}b\r\nc\n\n")
+        try expectEqual(e.replacement, "\nab\nc", "marker stripped, CRLF folded, trailing newlines trimmed")
+    },
+]
