@@ -340,6 +340,10 @@ struct ExprParser {
                 _ = consume()
                 let right = try parseFactor()
                 left = .of(left, right)
+            } else if isInfixMultiply() {
+                _ = consume()
+                let right = try parseFactor()
+                left = .mul(left, right)
             } else {
                 break
             }
@@ -371,6 +375,19 @@ struct ExprParser {
     /// compatibility — a declared `x` keeps the identifier reading).
     func isMultiSuffix(_ name: String) -> Bool {
         name.lowercased() == "x" && vars[name] == nil
+    }
+
+    /// Whether the live `x` keyword at the current position is the
+    /// infix multiplication sign (`1000 x 10000`): only a number or an
+    /// opening parenthesis may follow, so the postfix suffix keeps
+    /// `1.5x of 20` and `1.5x - 3`.
+    func isInfixMultiply() -> Bool {
+        guard let t = peek(), case .identifier(let name) = t, isMultiSuffix(name),
+              pos + 1 < tokens.count else { return false }
+        switch tokens[pos + 1] {
+        case .number, .paren("("): return true
+        default: return false
+        }
     }
 
     mutating func parsePrimary() throws -> Expr {
@@ -433,7 +450,7 @@ struct ExprParser {
         // r83: postfix multiplier suffix `1.5x` — recognized only when
         // the `x` keyword is live (a variable named `x` keeps the
         // identifier reading, exactly like every other keyword).
-        if let t = peek(), case .identifier(let name) = t, isMultiSuffix(name) {
+        if !isInfixMultiply(), let t = peek(), case .identifier(let name) = t, isMultiSuffix(name) {
             _ = consume()
             node = .mult(node)
         }
