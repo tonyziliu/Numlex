@@ -165,7 +165,8 @@ public struct SheetLineAnalysis: Equatable, Sendable {
         }
         guard let start = suffixStart, !tags.isEmpty else {
             return SheetLineAnalysis(source: source, kind: .expression,
-                                     evaluationProjection: source, body: source,
+                                     evaluationProjection: withoutResultRequest(source),
+                                     body: source,
                                      tags: [], tagSuffixSpan: nil,
                                      headingMarkerSpan: nil, headingBodySpan: nil,
                                      dividerSpan: nil, projectionOffset: 0)
@@ -188,11 +189,35 @@ public struct SheetLineAnalysis: Equatable, Sendable {
         }
         let kind: SheetLineKind = body.isEmpty ? .tagOnly : .expression
         return SheetLineAnalysis(source: source, kind: kind,
-                                 evaluationProjection: body, body: body,
+                                 evaluationProjection: withoutResultRequest(body),
+                                 body: body,
                                  tags: tags, tagSuffixSpan: suffix,
                                  headingMarkerSpan: nil, headingBodySpan: nil,
                                  dividerSpan: nil,
                                  projectionOffset: body.isEmpty ? 0 : leadingUTF16)
+    }
+
+    /// The calculator result request: an expression followed by a bare
+    /// trailing `=` (`1000 x 10000 =`) evaluates the expression. A left
+    /// side that is a declarable name (`a =`, `monthly rent =`) stays an
+    /// assignment with a missing right-hand side, and comparison runs
+    /// (`==`, `<=`, `>=`, `!=`) are never a request.
+    static func withoutResultRequest(_ line: String) -> String {
+        var end = line.endIndex
+        while end > line.startIndex, line[line.index(before: end)].isWhitespace {
+            end = line.index(before: end)
+        }
+        guard end > line.startIndex else { return line }
+        let eq = line.index(before: end)
+        guard line[eq] == "=" else { return line }
+        let lhs = String(line[..<eq])
+        if let prev = lhs.last, "=<>!".contains(prev) { return line }
+        let name = lhs.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty,
+              !isValidIdentifier(name),
+              NaturalCalculation.naturalLHS(name) == nil,
+              !BooleanLogic.hasAssignment(lhs) else { return line }
+        return lhs
     }
 
     /// A token is a tag only when it is `#` + a valid identifier. The
