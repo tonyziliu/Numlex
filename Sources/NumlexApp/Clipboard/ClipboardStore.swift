@@ -13,20 +13,30 @@ final class ClipboardStore {
     @ObservationIgnored private let directory: URL
     @ObservationIgnored private var lastChangeCount: Int
     @ObservationIgnored private var timer: Timer?
+    @ObservationIgnored private var saveTask: Task<Void, Never>?
+    @ObservationIgnored private var terminationObserver: NSObjectProtocol?
 
     init(directory: URL = Persistence.dataDirectory()) {
         self.directory = directory
         self.history = ClipboardPersistence.load(from: directory)
         // Content already on the pasteboard at launch is not captured.
         self.lastChangeCount = NSPasteboard.general.changeCount
+        terminationObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.flush() }
+        }
     }
 
     /// Idempotent: every main window calls it on appear.
     func start() {
         guard timer == nil, history.settings.captureEnabled else { return }
-        timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
+        let timer = Timer(timeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.poll() }
         }
+        // .common keeps capture running while a menu or the menu-bar window tracks events.
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     /// The user accepted the unencrypted-storage notice. Content copied
@@ -38,6 +48,10 @@ final class ClipboardStore {
         start()
     }
 
+    /// Generous UTF-8 bound (4 bytes per UTF-16 unit of the text limit), so
+    /// oversize copies are skipped without being read as a String.
+    private static let maxTextBytes = ClipboardHistory.maxTextLength * 4
+
     private func poll() {
         let pasteboard = NSPasteboard.general
         let count = pasteboard.changeCount
@@ -46,7 +60,10 @@ final class ClipboardStore {
         lastChangeCount = count
         let types = (pasteboard.pasteboardItems ?? []).flatMap { $0.types.map(\.rawValue) }
         guard ClipboardHistory.shouldCapture(typeIdentifiers: types),
-              let text = pasteboard.string(forType: .string) else { return }
+              let data = pasteboard.data(forType: .string),
+              data.count <= Self.maxTextBytes,
+              let text = String(data: data, encoding: .utf8) ?? pasteboard.string(forType: .string)
+        else { return }
         if history.record(text) { save() }
     }
 
@@ -63,11 +80,35 @@ final class ClipboardStore {
 
     func togglePin(_ item: ClipboardItem) { history.togglePin(item.id); save() }
     func remove(_ item: ClipboardItem) { history.remove(item.id); save() }
-    func clear(keepPinned: Bool) { history.clear(keepPinned: keepPinned); save() }
-    func setPaused(_ paused: Bool) { history.setPaused(paused); save() }
+    func clear(keepPinned: Bool) { history.clear(keepPinned: keepPinned); flush() }
+    func setPaused(_ paused: Bool) { history.setPaused(paused); flush() }
     func setCap(_ cap: Int) { history.setCap(cap); save() }
 
+    /// Trailing debounce. The encode and file write run on a serial queue
+    /// from a value copy of the history, so the main thread never touches
+    /// the file and there is no shared mutable state.
     private func save() {
-        ClipboardPersistence.save(history, to: directory)
+        saveTask?.cancel()
+        saveTask = Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled, let self else { return }
+            self.saveTask = nil
+            let snapshot = self.history
+            let directory = self.directory
+            Self.writeQueue.async { ClipboardPersistence.save(snapshot, to: directory) }
+        }
     }
+
+    /// Writes now and waits, so a pause, clear or quit is on disk before
+    /// the call returns. The serial queue keeps it ordered after any
+    /// pending debounced write.
+    func flush() {
+        saveTask?.cancel()
+        saveTask = nil
+        let snapshot = history
+        let directory = directory
+        Self.writeQueue.sync { ClipboardPersistence.save(snapshot, to: directory) }
+    }
+
+    private static let writeQueue = DispatchQueue(label: "numlex.clipboard.write")
 }
