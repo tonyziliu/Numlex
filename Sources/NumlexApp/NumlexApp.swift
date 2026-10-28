@@ -68,6 +68,7 @@ struct NumlexApp: App {
     // Single shared model instance injected into both the main window
     // and the Settings scene so they always stay in sync.
     @State private var model: AppModel
+    @State private var clipboard: ClipboardStore
     /// r97: the FIRST-LAUNCH decision, captured in `init()` BEFORE the
     /// model (and therefore `Persistence.load`/`dataDirectory`) runs, so
     /// "is this a genuinely new install?" is never answered by the app's
@@ -111,6 +112,7 @@ struct NumlexApp: App {
         UserDefaults.standard.removeObject(
             forKey: "NSWindow Frame com_apple_SwiftUI_Settings_window")
         _model = State(initialValue: AppModel())
+        _clipboard = State(initialValue: ClipboardStore())
     }
 
     /// r98: the curtain stages.
@@ -235,6 +237,10 @@ struct NumlexApp: App {
     var body: some Scene {
         WindowGroup(id: Self.mainWindowID) {
             themedRoot(launchRoot)
+                .environment(clipboard)
+                // NSApplication does not exist inside App.init, so the
+                // monitor and hotkey start with the first window.
+                .onAppear { clipboard.start(model: model) }
                 .environment(\.sidebarToggleHiddenForWelcome,
                              sidebarToggleHiddenForWelcome)
                 // r59: the SwiftUI content minimum allows the COLLAPSED
@@ -399,6 +405,13 @@ struct NumlexApp: App {
             // entirely — the system Settings… menu item and ⌘, are the
             // one entry point to the (single) Settings window.
         }
+
+        MenuBarExtra(L10n.t("clipboard.title", language: model.settings.language),
+                     systemImage: "list.clipboard") {
+            themedRoot(ClipboardPopupView(model: model, store: clipboard,
+                                          onDone: ClipboardPopupController.dismissMenuBarPopup))
+        }
+        .menuBarExtraStyle(.window)
 
         Settings {
             themedRoot(NativeSettingsView(model: model))

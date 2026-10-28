@@ -718,6 +718,18 @@ final class AppModel {
         focusCaret = min(plan.caret, (s.content as NSString).length)
     }
 
+    /// Appends clipboard text to the selected sheet as a new line, through
+    /// the same edit path as typing so line identities and tokens reconcile.
+    func appendLine(_ text: String) {
+        guard let sheet = selectedSheet else { return }
+        let edit = ClipboardInsertion.appendEdit(content: sheet.content, text: text)
+        guard !edit.replacement.isEmpty else { return }
+        let content = sheet.content + edit.replacement
+        updateContent(content, edit: NotebookEdit(range: edit.range, replacement: edit.replacement))
+        focusSheetID = sheet.id
+        focusCaret = (content as NSString).length
+    }
+
     /// Registers references born from an internal paste; the editor has
     /// already derived each marker's final UTF-16 location.
     func addReferences(_ refs: [AnswerReference]) {

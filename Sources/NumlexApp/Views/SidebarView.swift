@@ -48,6 +48,9 @@ import UniformTypeIdentifiers
 /// titlebar, traffic-light row or sidebar toggle.
 struct SidebarView: View {
     @Bindable var model: AppModel
+    @Environment(ClipboardStore.self) private var clipboard
+    /// Transient view state: which panel the sidebar column shows.
+    @State private var showsClipboard = false
     @State private var renamingID: UUID?
     /// The folder tab currently in inline rename (a folder created via
     /// the hover `+` opens straight into it).
@@ -133,6 +136,18 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
+            Picker("", selection: $showsClipboard) {
+                Image(systemName: "list.bullet.rectangle")
+                    .help(L10n.t("sheet", language: language)).tag(false)
+                Image(systemName: "list.clipboard")
+                    .help(L10n.t("clipboard.title", language: language)).tag(true)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            if showsClipboard {
+                ClipboardListView(model: model, store: clipboard)
+            } else {
             // The action row: the original full-width New Sheet button
             // alone (folder creation lives on the hover + of the tabs).
             Button {
@@ -227,6 +242,7 @@ struct SidebarView: View {
             // The pinned bottom folder tabs.
             folderTabs
 
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
