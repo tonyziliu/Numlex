@@ -379,4 +379,9 @@ struct EngineTests {
     func minimalModeCase(`case`: EngineCase) throws {
         try `case`.body()
     }
+
+    @Test(arguments: clipboardCases)
+    func clipboardCase(`case`: EngineCase) throws {
+        try `case`.body()
+    }
 }
