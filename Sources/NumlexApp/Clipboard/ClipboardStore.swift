@@ -43,7 +43,6 @@ final class ClipboardStore {
         guard count != lastChangeCount else { return }
         // Advance even while paused so resuming never captures stale content.
         lastChangeCount = count
-        guard !history.settings.isPaused else { return }
         let types = (pasteboard.pasteboardItems ?? []).flatMap { $0.types.map(\.rawValue) }
         guard ClipboardHistory.shouldCapture(typeIdentifiers: types),
               let text = pasteboard.string(forType: .string) else { return }
@@ -64,8 +63,8 @@ final class ClipboardStore {
     func togglePin(_ item: ClipboardItem) { history.togglePin(item.id); save() }
     func remove(_ item: ClipboardItem) { history.remove(item.id); save() }
     func clear(keepPinned: Bool) { history.clear(keepPinned: keepPinned); save() }
-    func setPaused(_ paused: Bool) { history.settings.isPaused = paused; save() }
-    func setCap(_ cap: Int) { history.settings.setCap(cap); save() }
+    func setPaused(_ paused: Bool) { history.setPaused(paused); save() }
+    func setCap(_ cap: Int) { history.setCap(cap); save() }
 
     private func save() {
         ClipboardPersistence.save(history, to: directory)

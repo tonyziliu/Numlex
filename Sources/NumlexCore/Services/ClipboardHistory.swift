@@ -1,19 +1,16 @@
 import Foundation
 
-/// One remembered piece of copied text.
+/// One remembered piece of copied text. Recency is the position in
+/// `ClipboardHistory.items`. Old files may carry date fields; decoding
+/// ignores them.
 public struct ClipboardItem: Identifiable, Codable, Equatable, Sendable {
     public var id: UUID
     public var text: String
-    public var createdAt: Date
-    public var lastUsedAt: Date
     public var isPinned: Bool
 
-    public init(id: UUID = UUID(), text: String, createdAt: Date = Date(),
-                lastUsedAt: Date? = nil, isPinned: Bool = false) {
+    public init(id: UUID = UUID(), text: String, isPinned: Bool = false) {
         self.id = id
         self.text = text
-        self.createdAt = createdAt
-        self.lastUsedAt = lastUsedAt ?? createdAt
         self.isPinned = isPinned
     }
 }
@@ -28,7 +25,7 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
 
     /// Maximum number of UNPINNED items kept. Pinned items never count.
     public private(set) var cap: Int
-    public var isPaused: Bool
+    public internal(set) var isPaused: Bool
 
     public init(cap: Int = ClipboardSettings.defaultCap, isPaused: Bool = false) {
         self.cap = ClipboardSettings.clamp(cap)
@@ -67,9 +64,7 @@ public struct ClipboardHistory: Codable, Equatable, Sendable {
     ]
 
     public private(set) var items: [ClipboardItem]
-    public var settings: ClipboardSettings {
-        didSet { evict() }
-    }
+    public private(set) var settings: ClipboardSettings
 
     public init(items: [ClipboardItem] = [], settings: ClipboardSettings = ClipboardSettings()) {
         self.items = items
@@ -100,17 +95,14 @@ public struct ClipboardHistory: Codable, Equatable, Sendable {
     /// blank or oversized text). Re-copying existing text moves it to the top
     /// and keeps its pin.
     @discardableResult
-    public mutating func record(_ text: String, at now: Date = Date(),
-                                id: UUID = UUID()) -> Bool {
+    public mutating func record(_ text: String) -> Bool {
         guard !settings.isPaused,
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               text.utf16.count <= Self.maxTextLength else { return false }
-        if let index = items.firstIndex(where: { $0.text == text }) {
-            var item = items.remove(at: index)
-            item.lastUsedAt = now
-            items.insert(item, at: 0)
+        if let item = items.first(where: { $0.text == text }) {
+            moveToTop(item.id)
         } else {
-            items.insert(ClipboardItem(id: id, text: text, createdAt: now), at: 0)
+            items.insert(ClipboardItem(text: text), at: 0)
         }
         evict()
         return true
@@ -118,11 +110,22 @@ public struct ClipboardHistory: Codable, Equatable, Sendable {
 
     /// Moves an existing item to the top (the user picked it from the list).
     /// Works while capture is paused.
-    public mutating func markUsed(_ id: UUID, at now: Date = Date()) {
+    public mutating func markUsed(_ id: UUID) {
+        moveToTop(id)
+    }
+
+    private mutating func moveToTop(_ id: UUID) {
         guard let index = items.firstIndex(where: { $0.id == id }) else { return }
-        var item = items.remove(at: index)
-        item.lastUsedAt = now
-        items.insert(item, at: 0)
+        items.insert(items.remove(at: index), at: 0)
+    }
+
+    public mutating func setPaused(_ paused: Bool) {
+        settings.isPaused = paused
+    }
+
+    public mutating func setCap(_ cap: Int) {
+        settings.setCap(cap)
+        evict()
     }
 
     public mutating func togglePin(_ id: UUID) {
@@ -140,7 +143,7 @@ public struct ClipboardHistory: Codable, Equatable, Sendable {
     }
 
     /// Drops the least recently used unpinned items beyond the cap.
-    public mutating func evict() {
+    private mutating func evict() {
         var unpinned = 0
         items = items.filter { item in
             if item.isPinned { return true }
