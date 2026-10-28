@@ -156,37 +156,70 @@ public struct ClipboardHistory: Codable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        let items = try c.decodeIfPresent([ClipboardItem].self, forKey: .items) ?? []
+        let items = try c.decodeIfPresent([Lossy<ClipboardItem>].self, forKey: .items)?
+            .compactMap(\.value) ?? []
         let settings = (try? c.decodeIfPresent(ClipboardSettings.self, forKey: .settings)) ?? ClipboardSettings()
         self.init(items: items, settings: settings)
+    }
+}
+
+/// Decodes to nil instead of throwing, so one bad array element cannot
+/// discard the rest.
+private struct Lossy<T: Decodable>: Decodable {
+    let value: T?
+    init(from decoder: Decoder) throws {
+        value = try? T(from: decoder)
     }
 }
 
 /// Reads and writes `clipboard.json`, separate from `store.json`.
 public enum ClipboardPersistence {
     public static let fileName = "clipboard.json"
+    public static let corruptFileName = "clipboard.json.corrupt"
 
     public static func url(in directory: URL) -> URL {
         directory.appendingPathComponent(fileName)
     }
 
-    /// A missing or unreadable file yields an empty history.
+    /// A missing or unreadable file yields an empty history. A file that
+    /// exists but does not decode is moved aside (replacing any earlier
+    /// `.corrupt`) so the next save cannot silently overwrite it.
     public static func load(from directory: URL) -> ClipboardHistory {
-        guard let data = try? Data(contentsOf: url(in: directory)),
-              let history = try? decoder.decode(ClipboardHistory.self, from: data)
-        else { return ClipboardHistory() }
-        return history
+        let fileURL = url(in: directory)
+        guard let data = try? Data(contentsOf: fileURL) else { return ClipboardHistory() }
+        do {
+            return try decoder.decode(ClipboardHistory.self, from: data)
+        } catch {
+            let aside = directory.appendingPathComponent(corruptFileName)
+            try? FileManager.default.removeItem(at: aside)
+            try? FileManager.default.moveItem(at: fileURL, to: aside)
+            return ClipboardHistory()
+        }
     }
 
+    /// The file holds everything the user copied, so it is owner-only. It is
+    /// created 0600 from the start (never briefly readable) in a temp file
+    /// beside the target and renamed into place.
     @discardableResult
     public static func save(_ history: ClipboardHistory, to directory: URL) -> Bool {
         guard let data = try? encoder.encode(history) else { return false }
+        let target = url(in: directory)
+        let temp = directory.appendingPathComponent(".\(fileName).\(UUID().uuidString).tmp")
+        let fd = open(temp.path, O_WRONLY | O_CREAT | O_EXCL, 0o600)
+        guard fd >= 0 else { return false }
+        let handle = FileHandle(fileDescriptor: fd, closeOnDealloc: true)
         do {
-            try data.write(to: url(in: directory), options: .atomic)
-            return true
+            try handle.write(contentsOf: data)
+            try handle.close()
         } catch {
+            try? FileManager.default.removeItem(at: temp)
             return false
         }
+        guard rename(temp.path, target.path) == 0 else {
+            try? FileManager.default.removeItem(at: temp)
+            return false
+        }
+        return true
     }
 
     private static var encoder: JSONEncoder {

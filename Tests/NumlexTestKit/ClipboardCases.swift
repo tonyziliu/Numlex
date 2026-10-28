@@ -1,6 +1,13 @@
 import Foundation
 import NumlexCore
 
+private func tempClipboardDir() throws -> URL {
+    let dir = FileManager.default.temporaryDirectory
+        .appendingPathComponent("numlex-clip-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    return dir
+}
+
 private func texts(_ items: [ClipboardItem]) -> [String] { items.map(\.text) }
 
 public let clipboardCases: [EngineCase] = [
@@ -122,14 +129,52 @@ public let clipboardCases: [EngineCase] = [
                         ["clipboard.json"], "only clipboard.json written, store.json untouched")
     },
 
-    EngineCase("clipboard-missing-or-corrupt-file-loads-empty") {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("numlex-clip-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    EngineCase("clipboard-missing-file-loads-empty") {
+        let dir = try tempClipboardDir()
         defer { try? FileManager.default.removeItem(at: dir) }
         try expectEqual(ClipboardPersistence.load(from: dir), ClipboardHistory(), "missing")
+    },
+
+    EngineCase("clipboard-corrupt-file-is-moved-aside-and-replaces-old-corrupt") {
+        let dir = try tempClipboardDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let aside = dir.appendingPathComponent(ClipboardPersistence.corruptFileName)
+        try Data([9, 9]).write(to: aside)
         try Data([0, 1, 2]).write(to: ClipboardPersistence.url(in: dir))
-        try expectEqual(ClipboardPersistence.load(from: dir), ClipboardHistory(), "corrupt")
+        try expectEqual(ClipboardPersistence.load(from: dir), ClipboardHistory(), "empty start")
+        try expect(!FileManager.default.fileExists(atPath: ClipboardPersistence.url(in: dir).path),
+                   "original moved away")
+        try expectEqual(try Data(contentsOf: aside), Data([0, 1, 2]), "latest corrupt copy kept")
+    },
+
+    EngineCase("clipboard-one-bad-element-keeps-the-rest-including-pins") {
+        let dir = try tempClipboardDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let a = "00000000-0000-0000-0000-00000000000A"
+        let c = "00000000-0000-0000-0000-00000000000C"
+        let json = "{\"items\":[{\"id\":\"" + a + "\",\"text\":\"a\",\"isPinned\":true},"
+            + "{\"id\":\"nope\",\"text\":5},"
+            + "{\"id\":\"" + c + "\",\"text\":\"c\",\"isPinned\":false}]}"
+        try Data(json.utf8).write(to: ClipboardPersistence.url(in: dir))
+        let h = ClipboardPersistence.load(from: dir)
+        try expectEqual(texts(h.items), ["a", "c"], "good elements kept")
+        try expect(h.items[0].isPinned, "pin kept")
+        try expect(!FileManager.default.fileExists(atPath:
+            dir.appendingPathComponent(ClipboardPersistence.corruptFileName).path), "not treated as corrupt")
+    },
+
+    EngineCase("clipboard-file-is-owner-only-including-after-overwrite") {
+        let dir = try tempClipboardDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var h = ClipboardHistory()
+        h.record("secret")
+        try expect(ClipboardPersistence.save(h, to: dir), "first save")
+        h.record("more")
+        try expect(ClipboardPersistence.save(h, to: dir), "overwrite")
+        let attrs = try FileManager.default.attributesOfItem(atPath: ClipboardPersistence.url(in: dir).path)
+        try expectEqual((attrs[.posixPermissions] as? NSNumber)?.intValue, 0o600, "0600")
+        try expectEqual(try FileManager.default.contentsOfDirectory(atPath: dir.path),
+                        ["clipboard.json"], "no temp file left")
     },
 
     EngineCase("clipboard-old-files-with-date-fields-still-load") {
