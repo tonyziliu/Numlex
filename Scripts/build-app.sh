@@ -3,6 +3,7 @@ set -e
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG="${1:-release}"
 APP_NAME="Numlex"
+DISPLAY_NAME="Journal"
 BUNDLE_ID="com.numlex.app"
 # The packaged app embeds Sparkle.framework in Contents/Frameworks, so the
 # executable needs its own @loader_path/../Frameworks rpath (SwiftPM's
@@ -49,8 +50,8 @@ cat > "$CONTENTS/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key><string>Adjutant</string>
-    <key>CFBundleDisplayName</key><string>Adjutant</string>
+    <key>CFBundleName</key><string>$DISPLAY_NAME</string>
+    <key>CFBundleDisplayName</key><string>$DISPLAY_NAME</string>
     <key>CFBundleIdentifier</key><string>$BUNDLE_ID</string>
     <key>CFBundleVersion</key><string>$VERSION</string>
     <key>CFBundleShortVersionString</key><string>$VERSION</string>
