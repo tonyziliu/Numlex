@@ -23,10 +23,19 @@ final class ClipboardStore {
 
     /// Idempotent: every main window calls it on appear.
     func start() {
-        guard timer == nil else { return }
+        guard timer == nil, history.settings.captureEnabled else { return }
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.poll() }
         }
+    }
+
+    /// The user accepted the unencrypted-storage notice. Content copied
+    /// before this point is not captured.
+    func enableCapture() {
+        history.setCaptureEnabled(true)
+        lastChangeCount = NSPasteboard.general.changeCount
+        save()
+        start()
     }
 
     private func poll() {

@@ -132,7 +132,7 @@ public let clipboardCases: [EngineCase] = [
     EngineCase("clipboard-missing-file-loads-empty") {
         let dir = try tempClipboardDir()
         defer { try? FileManager.default.removeItem(at: dir) }
-        try expectEqual(ClipboardPersistence.load(from: dir), ClipboardHistory(), "missing")
+        try expectEqual(ClipboardPersistence.load(from: dir), .fresh, "missing")
     },
 
     EngineCase("clipboard-corrupt-file-is-moved-aside-and-replaces-old-corrupt") {
@@ -141,7 +141,7 @@ public let clipboardCases: [EngineCase] = [
         let aside = dir.appendingPathComponent(ClipboardPersistence.corruptFileName)
         try Data([9, 9]).write(to: aside)
         try Data([0, 1, 2]).write(to: ClipboardPersistence.url(in: dir))
-        try expectEqual(ClipboardPersistence.load(from: dir), ClipboardHistory(), "empty start")
+        try expectEqual(ClipboardPersistence.load(from: dir), .fresh, "empty start")
         try expect(!FileManager.default.fileExists(atPath: ClipboardPersistence.url(in: dir).path),
                    "original moved away")
         try expectEqual(try Data(contentsOf: aside), Data([0, 1, 2]), "latest corrupt copy kept")
@@ -190,7 +190,34 @@ public let clipboardCases: [EngineCase] = [
     EngineCase("clipboard-settings-decode-tolerates-missing-fields") {
         let data = Data(#"{"items":[]}"#.utf8)
         let h = try JSONDecoder().decode(ClipboardHistory.self, from: data)
-        try expectEqual(h.settings, ClipboardSettings(), "defaults")
+        try expectEqual(h.settings, ClipboardSettings(captureEnabled: false), "defaults, capture off")
+    },
+
+    EngineCase("clipboard-fresh-install-records-nothing-until-enabled") {
+        let dir = try tempClipboardDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var h = ClipboardPersistence.load(from: dir)
+        try expect(!h.settings.captureEnabled, "off by default")
+        try expect(!h.record("a"), "nothing recorded")
+        h.setCaptureEnabled(true)
+        try expect(h.record("a"), "recorded once enabled")
+        try expect(ClipboardPersistence.save(h, to: dir), "save")
+        try expect(ClipboardPersistence.load(from: dir).settings.captureEnabled, "choice persists")
+    },
+
+    EngineCase("clipboard-old-file-without-flag-loads-enabled-when-it-has-items") {
+        let dir = try tempClipboardDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let id = "00000000-0000-0000-0000-000000000001"
+        let withItems = "{\"items\":[{\"id\":\"" + id + "\",\"text\":\"a\",\"isPinned\":false}],"
+            + "\"settings\":{\"cap\":50,\"isPaused\":false}}"
+        try Data(withItems.utf8).write(to: ClipboardPersistence.url(in: dir))
+        let h = ClipboardPersistence.load(from: dir)
+        try expect(h.settings.captureEnabled, "history present means already enabled")
+        try expectEqual(h.settings.cap, 50, "other settings kept")
+        let empty = Data(#"{"items":[],"settings":{"cap":50}}"#.utf8)
+        let emptyHistory = try JSONDecoder().decode(ClipboardHistory.self, from: empty)
+        try expect(!emptyHistory.settings.captureEnabled, "no history means the notice still shows")
     },
 ]
 

@@ -25,7 +25,16 @@ struct ClipboardListView: View {
                     .font(Design.label)
                 optionsMenu
             }
-            if store.history.settings.isPaused {
+            if !store.history.settings.captureEnabled {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(t("clipboard.enableNotice"))
+                        .font(Design.labelSmall)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button(t("clipboard.enable")) { store.enableCapture() }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else if store.history.settings.isPaused {
                 Text(t("clipboard.pausedNote"))
                     .font(Design.labelSmall)
                     .foregroundStyle(.secondary)

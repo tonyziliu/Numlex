@@ -26,10 +26,15 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
     /// Maximum number of UNPINNED items kept. Pinned items never count.
     public private(set) var cap: Int
     public internal(set) var isPaused: Bool
+    /// False until the user accepts the unencrypted-storage notice. Distinct
+    /// from `isPaused`, which the user can toggle later.
+    public internal(set) var captureEnabled: Bool
 
-    public init(cap: Int = ClipboardSettings.defaultCap, isPaused: Bool = false) {
+    public init(cap: Int = ClipboardSettings.defaultCap, isPaused: Bool = false,
+                captureEnabled: Bool = true) {
         self.cap = ClipboardSettings.clamp(cap)
         self.isPaused = isPaused
+        self.captureEnabled = captureEnabled
     }
 
     public mutating func setCap(_ value: Int) {
@@ -40,12 +45,13 @@ public struct ClipboardSettings: Codable, Equatable, Sendable {
         min(max(value, capRange.lowerBound), capRange.upperBound)
     }
 
-    private enum CodingKeys: String, CodingKey { case cap, isPaused }
+    private enum CodingKeys: String, CodingKey { case cap, isPaused, captureEnabled }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.init(cap: try c.decodeIfPresent(Int.self, forKey: .cap) ?? Self.defaultCap,
-                  isPaused: try c.decodeIfPresent(Bool.self, forKey: .isPaused) ?? false)
+                  isPaused: try c.decodeIfPresent(Bool.self, forKey: .isPaused) ?? false,
+                  captureEnabled: try c.decodeIfPresent(Bool.self, forKey: .captureEnabled) ?? false)
     }
 }
 
@@ -96,7 +102,7 @@ public struct ClipboardHistory: Codable, Equatable, Sendable {
     /// and keeps its pin.
     @discardableResult
     public mutating func record(_ text: String) -> Bool {
-        guard !settings.isPaused,
+        guard settings.captureEnabled, !settings.isPaused,
               !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
               text.utf16.count <= Self.maxTextLength else { return false }
         if let item = items.first(where: { $0.text == text }) {
@@ -121,6 +127,16 @@ public struct ClipboardHistory: Codable, Equatable, Sendable {
 
     public mutating func setPaused(_ paused: Bool) {
         settings.isPaused = paused
+    }
+
+    public mutating func setCaptureEnabled(_ enabled: Bool) {
+        settings.captureEnabled = enabled
+    }
+
+    /// What a fresh install starts with: nothing is recorded until the user
+    /// opts in.
+    public static var fresh: ClipboardHistory {
+        ClipboardHistory(settings: ClipboardSettings(captureEnabled: false))
     }
 
     public mutating func setCap(_ cap: Int) {
@@ -158,9 +174,18 @@ public struct ClipboardHistory: Codable, Equatable, Sendable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         let items = try c.decodeIfPresent([Lossy<ClipboardItem>].self, forKey: .items)?
             .compactMap(\.value) ?? []
-        let settings = (try? c.decodeIfPresent(ClipboardSettings.self, forKey: .settings)) ?? ClipboardSettings()
+        var settings = (try? c.decodeIfPresent(ClipboardSettings.self, forKey: .settings))
+            ?? ClipboardSettings(captureEnabled: false)
+        // Files written before the opt-in existed: history means already enabled.
+        let probe = try? c.decodeIfPresent(CaptureEnabledProbe.self, forKey: .settings)
+        let hasFlag = probe?.captureEnabled != nil
+        if !hasFlag && !items.isEmpty { settings.captureEnabled = true }
         self.init(items: items, settings: settings)
     }
+}
+
+private struct CaptureEnabledProbe: Decodable {
+    let captureEnabled: Bool?
 }
 
 /// Decodes to nil instead of throwing, so one bad array element cannot
@@ -186,14 +211,14 @@ public enum ClipboardPersistence {
     /// `.corrupt`) so the next save cannot silently overwrite it.
     public static func load(from directory: URL) -> ClipboardHistory {
         let fileURL = url(in: directory)
-        guard let data = try? Data(contentsOf: fileURL) else { return ClipboardHistory() }
+        guard let data = try? Data(contentsOf: fileURL) else { return .fresh }
         do {
             return try decoder.decode(ClipboardHistory.self, from: data)
         } catch {
             let aside = directory.appendingPathComponent(corruptFileName)
             try? FileManager.default.removeItem(at: aside)
             try? FileManager.default.moveItem(at: fileURL, to: aside)
-            return ClipboardHistory()
+            return .fresh
         }
     }
 
