@@ -3,20 +3,16 @@ import Observation
 import NumlexCore
 
 /// The one clipboard history shared by the menu-bar popup, the hotkey
-/// popup and the sidebar panel. It owns the pasteboard polling, the
-/// `clipboard.json` persistence and the global hotkey.
+/// popup and the sidebar panel. It owns the pasteboard polling and the
+/// `clipboard.json` persistence.
 @MainActor
 @Observable
 final class ClipboardStore {
     private(set) var history: ClipboardHistory
-    /// False when another app already owns the hotkey.
-    private(set) var hotKeyRegistered = false
 
     @ObservationIgnored private let directory: URL
     @ObservationIgnored private var lastChangeCount: Int
     @ObservationIgnored private var timer: Timer?
-    @ObservationIgnored private var hotKey: ClipboardHotKey?
-    @ObservationIgnored private var popup: ClipboardPopupController?
 
     init(directory: URL = Persistence.dataDirectory()) {
         self.directory = directory
@@ -26,12 +22,8 @@ final class ClipboardStore {
     }
 
     /// Idempotent: every main window calls it on appear.
-    func start(model: AppModel) {
+    func start() {
         guard timer == nil else { return }
-        popup = ClipboardPopupController(model: model, store: self)
-        let key = ClipboardHotKey()
-        hotKeyRegistered = key.register { [weak self] in self?.popup?.toggle() }
-        hotKey = key
         timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.poll() }
         }

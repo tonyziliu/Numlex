@@ -8,21 +8,26 @@ private final class ClipboardPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 
+/// Owns the global hotkey and the floating panel it toggles.
 @MainActor
 final class ClipboardPopupController {
     private let model: AppModel
     private let store: ClipboardStore
     private var panel: ClipboardPanel?
     private var resignObserver: NSObjectProtocol?
+    private var hotKey: ClipboardHotKey?
 
     init(model: AppModel, store: ClipboardStore) {
         self.model = model
         self.store = store
     }
 
-    /// Closes the menu-bar extra's window popup after a pick.
-    static func dismissMenuBarPopup() {
-        NSApp.keyWindow?.orderOut(nil)
+    /// Idempotent: every main window calls it on appear. If another app
+    /// owns the hotkey the registration fails and the hotkey stays off.
+    func start() {
+        guard hotKey == nil else { return }
+        let key = ClipboardHotKey { [weak self] in self?.toggle() }
+        if key.register() { hotKey = key }
     }
 
     func toggle() {
@@ -30,7 +35,7 @@ final class ClipboardPopupController {
     }
 
     private func show() {
-        let panel = ClipboardPanel(contentRect: NSRect(x: 0, y: 0, width: 340, height: 420),
+        let panel = ClipboardPanel(contentRect: NSRect(origin: .zero, size: ClipboardPopupView.size),
                                    styleMask: [.borderless, .nonactivatingPanel],
                                    backing: .buffered, defer: false)
         panel.level = .floating

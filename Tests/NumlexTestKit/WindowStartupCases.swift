@@ -228,7 +228,8 @@ public let windowStartupCases: [EngineCase] = [
 
         try expect(app.contains("FirstLaunch.evaluateAtLaunch(in: dataDirectory)")
                    && appInit.contains("_revealStage = State(initialValue: isNewInstall ? .welcome : .app)")
-                   && appInit.contains("_model = State(initialValue: AppModel())"),
+                   && appInit.contains("let model = AppModel()")
+                   && appInit.contains("_model = State(initialValue: model)"),
                    "the one first-launch decision still precedes the one shared model")
         try expectEqual(app.components(separatedBy: "FirstLaunch.evaluateAtLaunch").count - 1, 1,
                         "new main windows do not rerun first-launch evaluation")

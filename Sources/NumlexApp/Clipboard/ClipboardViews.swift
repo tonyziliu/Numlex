@@ -53,8 +53,7 @@ struct ClipboardListView: View {
     private func row(_ item: ClipboardItem) -> some View {
         HStack(spacing: 4) {
             Button {
-                store.copy(item)
-                onDone?()
+                copy(item)
             } label: {
                 Text(item.text)
                     .font(Design.label)
@@ -65,8 +64,7 @@ struct ClipboardListView: View {
             }
             .buttonStyle(.plain)
             .help(t("clipboard.copy"))
-            iconButton(item.isPinned ? "pin.fill" : "pin",
-                       help: t(item.isPinned ? "clipboard.unpin" : "clipboard.pin")) {
+            iconButton(item.isPinned ? "pin.fill" : "pin", help: pinLabel(item)) {
                 store.togglePin(item)
             }
             iconButton("text.append", help: t("clipboard.insert")) {
@@ -79,12 +77,21 @@ struct ClipboardListView: View {
         .background(item.isPinned ? Color.accentColor.opacity(0.08) : Color.clear,
                     in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .contextMenu {
-            Button(t("clipboard.copy")) { store.copy(item); onDone?() }
+            Button(t("clipboard.copy")) { copy(item) }
             Button(t("clipboard.insert")) { model.appendLine(item.text) }
-            Button(t(item.isPinned ? "clipboard.unpin" : "clipboard.pin")) { store.togglePin(item) }
+            Button(pinLabel(item)) { store.togglePin(item) }
             Divider()
             Button(t("clipboard.delete"), role: .destructive) { store.remove(item) }
         }
+    }
+
+    private func copy(_ item: ClipboardItem) {
+        store.copy(item)
+        onDone?()
+    }
+
+    private func pinLabel(_ item: ClipboardItem) -> String {
+        t(item.isPinned ? "clipboard.unpin" : "clipboard.pin")
     }
 
     private func iconButton(_ symbol: String, help: String, action: @escaping () -> Void) -> some View {
@@ -127,10 +134,45 @@ struct ClipboardPopupView: View {
     let store: ClipboardStore
     var onDone: () -> Void
 
+    static let size = CGSize(width: 340, height: 420)
+
     var body: some View {
         ClipboardListView(model: model, store: store, onDone: onDone)
             .padding(10)
-            .frame(width: 340, height: 420)
+            .frame(width: Self.size.width, height: Self.size.height)
             .background(.regularMaterial)
+    }
+}
+
+/// The menu-bar extra's content. A pick closes only the window hosting
+/// this view, never whichever window happens to be key.
+struct ClipboardMenuBarView: View {
+    let model: AppModel
+    let store: ClipboardStore
+
+    @State private var host = HostWindow()
+
+    var body: some View {
+        ClipboardPopupView(model: model, store: store, onDone: { host.window?.orderOut(nil) })
+            .background(HostWindowReader(host: host))
+    }
+}
+
+@MainActor
+private final class HostWindow {
+    weak var window: NSWindow?
+}
+
+private struct HostWindowReader: NSViewRepresentable {
+    let host: HostWindow
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        DispatchQueue.main.async { host.window = view.window }
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        if host.window == nil { host.window = view.window }
     }
 }

@@ -69,6 +69,7 @@ struct NumlexApp: App {
     // and the Settings scene so they always stay in sync.
     @State private var model: AppModel
     @State private var clipboard: ClipboardStore
+    @State private var clipboardPopup: ClipboardPopupController
     /// r97: the FIRST-LAUNCH decision, captured in `init()` BEFORE the
     /// model (and therefore `Persistence.load`/`dataDirectory`) runs, so
     /// "is this a genuinely new install?" is never answered by the app's
@@ -111,8 +112,11 @@ struct NumlexApp: App {
         // — the open size is deterministic by design.
         UserDefaults.standard.removeObject(
             forKey: "NSWindow Frame com_apple_SwiftUI_Settings_window")
-        _model = State(initialValue: AppModel())
-        _clipboard = State(initialValue: ClipboardStore())
+        let model = AppModel()
+        let clipboard = ClipboardStore()
+        _model = State(initialValue: model)
+        _clipboard = State(initialValue: clipboard)
+        _clipboardPopup = State(initialValue: ClipboardPopupController(model: model, store: clipboard))
     }
 
     /// r98: the curtain stages.
@@ -240,7 +244,7 @@ struct NumlexApp: App {
                 .environment(clipboard)
                 // NSApplication does not exist inside App.init, so the
                 // monitor and hotkey start with the first window.
-                .onAppear { clipboard.start(model: model) }
+                .onAppear { clipboard.start(); clipboardPopup.start() }
                 .environment(\.sidebarToggleHiddenForWelcome,
                              sidebarToggleHiddenForWelcome)
                 // r59: the SwiftUI content minimum allows the COLLAPSED
@@ -408,8 +412,7 @@ struct NumlexApp: App {
 
         MenuBarExtra(L10n.t("clipboard.title", language: model.settings.language),
                      systemImage: "list.clipboard") {
-            themedRoot(ClipboardPopupView(model: model, store: clipboard,
-                                          onDone: ClipboardPopupController.dismissMenuBarPopup))
+            themedRoot(ClipboardMenuBarView(model: model, store: clipboard))
         }
         .menuBarExtraStyle(.window)
 
