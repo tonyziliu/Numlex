@@ -158,12 +158,12 @@ public let appIconAppearanceCases: [EngineCase] = [
         let root = appIconRepoRoot()
         func url(_ rel: String) -> URL { root.appendingPathComponent(rel).standardizedFileURL }
         let expected: [(String, Int, String)] = [
-            ("Sources/NumlexApp/Resources/AppIconLight.icns", 582_175,
-             "d6d3c7108b437f4f0e51ad7a8989ad5b59a3e01e1a2e7044a2ac027c54c83e40"),
-            ("Sources/NumlexApp/Resources/AppIconDarkPreview.png", 498_113,
-             "f2b66202656f9d04372010d251a54668d1a9d153648bb4940465c43e85902932"),
-            ("Sources/NumlexApp/Resources/AppIconLightPreview.png", 449_640,
-             "4367adca2ded31ca07fe7cfcd7f1be4cab3b1e3a1fe927dc4d1a5855d505cf2e"),
+            ("Sources/NumlexApp/Resources/AppIconLight.icns", 199_800,
+             "6066bd606be1c68236795d8ac70a2cb25a6bce39146bc3b73a3abdc8fe379614"),
+            ("Sources/NumlexApp/Resources/AppIconDarkPreview.png", 34_931,
+             "ef147376c9dc5219842a0d02f5d1e05ad9385ad6d20c9e08cfdf9d2ecae3304a"),
+            ("Sources/NumlexApp/Resources/AppIconLightPreview.png", 34_931,
+             "ef147376c9dc5219842a0d02f5d1e05ad9385ad6d20c9e08cfdf9d2ecae3304a"),
         ]
         for (rel, size, sha) in expected {
             guard let data = try? Data(contentsOf: url(rel)) else {
@@ -181,7 +181,7 @@ public let appIconAppearanceCases: [EngineCase] = [
             let w = pngUInt32(data, at: 16), h = pngUInt32(data, at: 20)
             try expectEqual(w, 512, "\(rel) width")
             try expectEqual(h, 512, "\(rel) height")
-            try expectEqual(data[24], 16, "\(rel) bit depth 16")
+            try expectEqual(data[24], 8, "\(rel) bit depth 8")
             try expectEqual(data[25], 6, "\(rel) RGBA color type")
         }
         // The Light preview is the Light ICNS's 512 rendition (same
@@ -231,9 +231,9 @@ public let appIconAppearanceCases: [EngineCase] = [
         guard let build = appIconSource("Scripts/build-app.sh") else {
             throw CaseFailure(message: "build-app.sh missing", location: "AppIconCases")
         }
-        for sha in ["d6d3c7108b437f4f0e51ad7a8989ad5b59a3e01e1a2e7044a2ac027c54c83e40",
-                    "f2b66202656f9d04372010d251a54668d1a9d153648bb4940465c43e85902932",
-                    "4367adca2ded31ca07fe7cfcd7f1be4cab3b1e3a1fe927dc4d1a5855d505cf2e"] {
+        for sha in ["6066bd606be1c68236795d8ac70a2cb25a6bce39146bc3b73a3abdc8fe379614",
+                    "ef147376c9dc5219842a0d02f5d1e05ad9385ad6d20c9e08cfdf9d2ecae3304a",
+                    "ef147376c9dc5219842a0d02f5d1e05ad9385ad6d20c9e08cfdf9d2ecae3304a"] {
             try expect(build.contains(sha), "build-app.sh pins \(sha.prefix(12))…")
         }
         try expect(build.contains("exit 1"), "build-app.sh fails closed")

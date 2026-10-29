@@ -183,11 +183,11 @@ cp -R "$CORE_BUNDLE" "$RESOURCES_DIR/Numlex_NumlexCore.bundle"
 # never touched: selecting Dark resets to the bundle default instead.
 # ---------------------------------------------------------------------------
 LIGHT_ICON_SRC="$ROOT/Sources/NumlexApp/Resources/AppIconLight.icns"
-LIGHT_ICON_SHA="d6d3c7108b437f4f0e51ad7a8989ad5b59a3e01e1a2e7044a2ac027c54c83e40"
+LIGHT_ICON_SHA="6066bd606be1c68236795d8ac70a2cb25a6bce39146bc3b73a3abdc8fe379614"
 DARK_PREVIEW_SRC="$ROOT/Sources/NumlexApp/Resources/AppIconDarkPreview.png"
-DARK_PREVIEW_SHA="f2b66202656f9d04372010d251a54668d1a9d153648bb4940465c43e85902932"
+DARK_PREVIEW_SHA="ef147376c9dc5219842a0d02f5d1e05ad9385ad6d20c9e08cfdf9d2ecae3304a"
 LIGHT_PREVIEW_SRC="$ROOT/Sources/NumlexApp/Resources/AppIconLightPreview.png"
-LIGHT_PREVIEW_SHA="4367adca2ded31ca07fe7cfcd7f1be4cab3b1e3a1fe927dc4d1a5855d505cf2e"
+LIGHT_PREVIEW_SHA="ef147376c9dc5219842a0d02f5d1e05ad9385ad6d20c9e08cfdf9d2ecae3304a"
 for pair in "$LIGHT_ICON_SRC|$LIGHT_ICON_SHA" \
             "$DARK_PREVIEW_SRC|$DARK_PREVIEW_SHA" \
             "$LIGHT_PREVIEW_SRC|$LIGHT_PREVIEW_SHA"; do
