@@ -4,6 +4,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CONFIG="${1:-release}"
 APP_NAME="Numlex"
 DISPLAY_NAME="Journal"
+# The Journal icon ships as AppIcon.icns only. The inherited Numlex Assets.car
+# outranks the ICNS, so it is skipped unless USE_NUMLEX_CATALOG=1.
+USE_NUMLEX_CATALOG="${USE_NUMLEX_CATALOG:-0}"
 BUNDLE_ID="com.numlex.app"
 # The packaged app embeds Sparkle.framework in Contents/Frameworks, so the
 # executable needs its own @loader_path/../Frameworks rpath (SwiftPM's
@@ -45,6 +48,8 @@ cp "$BIN_PATH/Numlex" "$MACOS_DIR/Numlex"
 chmod +x "$MACOS_DIR/Numlex"
 
 # Info.plist
+ICON_NAME_ENTRY=""
+[ "$USE_NUMLEX_CATALOG" = "1" ] && ICON_NAME_ENTRY="<key>CFBundleIconName</key><string>AppIcon</string>"
 cat > "$CONTENTS/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -60,7 +65,7 @@ cat > "$CONTENTS/Info.plist" <<PLIST
     <key>LSMinimumSystemVersion</key><string>26.0</string>
     <key>NSHighResolutionCapable</key><true/>
     <key>NSPrincipalClass</key><string>NSApplication</string>
-    <key>CFBundleIconName</key><string>AppIcon</string>
+    $ICON_NAME_ENTRY
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>SUFeedURL</key><string>$SU_FEED</string>
     <key>SUPublicEDKey</key><string>$SU_KEY</string>
@@ -81,6 +86,7 @@ PLIST
 # (alternate, selected at runtime through NSImage(named:)). Compiled by
 # Scripts/compile-modern-app-icon.sh on the macos-26 Actions runner and
 # committed to Assets/AppIcon.compiled/ (see Assets/README.md provenance).
+if [ "$USE_NUMLEX_CATALOG" = "1" ]; then
 CAR="$ROOT/Assets/AppIcon.compiled/Assets.car"
 if [ ! -s "$CAR" ]; then
   echo "Missing modern icon: $CAR (run the 'Build Modern App Icon' GitHub Action first)"
@@ -124,6 +130,7 @@ PYCAR
   rm -f "$CARINFO"
 else
   echo "build-app: xcrun unavailable; skipping the dual-iconstack assertion"
+fi
 fi
 
 # Legacy fallback (required on systems that ignore Assets.car): the
