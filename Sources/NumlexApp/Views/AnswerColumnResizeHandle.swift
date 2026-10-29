@@ -44,8 +44,8 @@ struct AnswerColumnResizeHandle: View {
     /// from this value, so relative drags always behave against what
     /// the user sees.
     var displayedWidth: Double
-    /// Width change per pointer point; 2 while the centered block is capped.
-    var dragGain: Double = 1
+    /// The detail width, so a centered block keeps the divider under the pointer.
+    var detailWidth: Double = 0
     /// The UI language (localized accessibility labels/help).
     var language: AppLanguage
     /// Live in-memory change during the drag (no persistence).
@@ -159,7 +159,7 @@ struct AnswerColumnResizeHandle: View {
                 dragSession.beginIfNeeded(
                     pointerX: value.location.x,
                     displayedWidth: displayedWidth,
-                    gain: dragGain)
+                    detailWidth: detailWidth)
                 guard let width = dragSession.width(pointerX: value.location.x)
                 else { return }
                 hasMaterialDrag = true

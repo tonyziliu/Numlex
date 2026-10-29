@@ -25,6 +25,7 @@ final class GlobalHotKeyCenter {
     @ObservationIgnored private let directory: URL
     @ObservationIgnored private var refs: [HotKeyAction: EventHotKeyRef] = [:]
     @ObservationIgnored private var handlerRef: EventHandlerRef?
+    @ObservationIgnored private var isSuspended = false
     @ObservationIgnored var onPress: (HotKeyAction) -> Void = { _ in }
     /// Opens a fresh main window; installed by the main window scene.
     @ObservationIgnored var openMainWindow: (() -> Void)?
@@ -64,6 +65,14 @@ final class GlobalHotKeyCenter {
         HotKeyAction.allCases.forEach(register)
     }
 
+    /// While the recorder listens, live registrations would swallow the
+    /// pressed keys before the recorder sees them, so they are lifted.
+    func setSuspended(_ suspended: Bool) {
+        guard suspended != isSuspended else { return }
+        isSuspended = suspended
+        HotKeyAction.allCases.forEach(register)
+    }
+
     /// Binds and registers `combo`, or returns why it was not accepted.
     func set(_ combo: KeyCombo, for action: HotKeyAction) -> HotKeyBindings.Rejection? {
         if let rejection = bindings.set(combo, for: action) { return rejection }
@@ -82,7 +91,7 @@ final class GlobalHotKeyCenter {
     private func register(_ action: HotKeyAction) {
         if let ref = refs.removeValue(forKey: action) { UnregisterEventHotKey(ref) }
         guard let combo = bindings[action] else { status[action] = .unset; return }
-        guard handlerRef != nil else { return }
+        guard handlerRef != nil, !isSuspended else { return }
         var ref: EventHotKeyRef?
         let result = RegisterEventHotKey(combo.keyCode, Self.carbonModifiers(combo.modifiers),
                                          EventHotKeyID(signature: Self.signature, id: Self.id(action)),

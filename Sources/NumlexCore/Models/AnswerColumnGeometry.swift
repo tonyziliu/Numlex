@@ -14,7 +14,7 @@ import CoreGraphics
 /// uses `.global`), so the full drag behavior is testable as pure
 /// arithmetic.
 public struct AnswerColumnDragSession {
-    private var start: (width: Double, pointerX: Double, gain: Double)?
+    private var start: (width: Double, pointerX: Double, detailWidth: Double)?
 
     /// A fresh, not-yet-dragging session.
     public init() {}
@@ -29,10 +29,10 @@ public struct AnswerColumnDragSession {
     public mutating func beginIfNeeded(
         pointerX: Double,
         displayedWidth: Double,
-        gain: Double = 1
+        detailWidth: Double = 0
     ) {
         if start == nil {
-            start = (displayedWidth, pointerX, gain.isFinite && gain > 0 ? gain : 1)
+            start = (displayedWidth, pointerX, detailWidth.isFinite ? detailWidth : 0)
         }
     }
 
@@ -44,11 +44,11 @@ public struct AnswerColumnDragSession {
     /// accident.
     public func width(pointerX: Double) -> Double? {
         guard let s = start else { return nil }
-        let delta = (pointerX - s.pointerX) * s.gain
+        let delta = pointerX - s.pointerX
         guard AnswerColumnGeometry.isMaterialDrag(horizontalTranslation: delta)
         else { return nil }
         return AnswerColumnGeometry.width(
-            afterDrag: s.width, horizontalTranslation: delta)
+            afterDrag: s.width, horizontalTranslation: delta, detailWidth: s.detailWidth)
     }
 
     /// The EXACT final width for the drag-end pointer position (the
@@ -57,10 +57,10 @@ public struct AnswerColumnDragSession {
     /// non-finite.
     public func finalWidth(pointerX: Double) -> Double? {
         guard let s = start else { return nil }
-        let delta = (pointerX - s.pointerX) * s.gain
+        let delta = pointerX - s.pointerX
         guard delta.isFinite else { return nil }
         return AnswerColumnGeometry.width(
-            afterDrag: s.width, horizontalTranslation: delta)
+            afterDrag: s.width, horizontalTranslation: delta, detailWidth: s.detailWidth)
     }
 
     /// Forgets the session (drag end, click end, view teardown).
@@ -171,13 +171,34 @@ public enum AnswerColumnGeometry {
         return editorMaximumWidth + dividerWidth + answer
     }
 
-    /// Pointer-to-width gain for the divider drag. A centered block
-    /// moves its divider by half of any width change, so while the cap
-    /// binds the width must change twice as fast to keep the divider
-    /// under the pointer.
-    public static func dragGain(detailWidth: Double, answerWidth: Double) -> Double {
-        guard detailWidth.isFinite, detailWidth > contentBlockMaxWidth(answerWidth: answerWidth)
-        else { return 1 }
-        return 2
+    /// Divider x inside the detail area for an answer width: the block is
+    /// centered while it is capped, and fills the detail once it is not.
+    public static func dividerX(answerWidth a: Double, detailWidth d: Double) -> Double {
+        let capped = d > contentBlockMaxWidth(answerWidth: a)
+        return capped ? (d - editorMaximumWidth - dividerWidth - a) / 2 + editorMaximumWidth
+                      : d - a - dividerWidth
+    }
+
+    /// The answer width that puts the divider at `x`, the inverse of
+    /// `dividerX`. The divider moves at half speed while the block is
+    /// capped and at full speed after, so a pointer drag that crosses
+    /// the boundary needs this piecewise inverse, not a fixed gain.
+    public static func answerWidth(dividerX x: Double, detailWidth d: Double) -> Double {
+        let uncapped = d - dividerWidth - x
+        let boundary = d - editorMaximumWidth - dividerWidth
+        if uncapped >= boundary { return uncapped }
+        return boundary - 2 * (x - editorMaximumWidth)
+    }
+
+    /// Drag with the divider kept under the pointer in a centered block.
+    /// Unknown detail width (0) falls back to the 1:1 drag.
+    public static func width(afterDrag startWidth: Double,
+                             horizontalTranslation: Double,
+                             detailWidth: Double) -> Double {
+        guard detailWidth > 0, startWidth.isFinite, horizontalTranslation.isFinite else {
+            return width(afterDrag: startWidth, horizontalTranslation: horizontalTranslation)
+        }
+        let x = dividerX(answerWidth: startWidth, detailWidth: detailWidth) + horizontalTranslation
+        return min(max(answerWidth(dividerX: x, detailWidth: detailWidth), minWidth), maxWidth)
     }
 }

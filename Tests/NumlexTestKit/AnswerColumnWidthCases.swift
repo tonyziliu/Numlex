@@ -637,15 +637,18 @@ public let answerColumnWidthCases: [EngineCase] = [
                    "the hover outline uses the actual width")
     },
 
-    EngineCase("answer-width-drag-gain-doubles-only-when-block-is-capped") {
-        try expectEqual(AnswerColumnGeometry.dragGain(detailWidth: 600, answerWidth: 200), 1, "narrow")
-        try expectEqual(AnswerColumnGeometry.dragGain(detailWidth: 1400, answerWidth: 200), 2, "wide")
+    EngineCase("answer-width-drag-keeps-divider-under-pointer-across-the-cap-boundary") {
+        let d = 1000.0
+        func divider(_ a: Double) -> Double { AnswerColumnGeometry.dividerX(answerWidth: a, detailWidth: d) }
+        for (start, dx) in [(140.0, -190.0), (400.0, 150.0), (200.0, -30.0), (300.0, 40.0)] {
+            let a = AnswerColumnGeometry.width(afterDrag: start, horizontalTranslation: dx, detailWidth: d)
+            try expectEqual(divider(a), divider(start) + dx, "divider follows pointer from \(start) by \(dx)")
+        }
+        try expectEqual(AnswerColumnGeometry.width(afterDrag: 200, horizontalTranslation: -30, detailWidth: 0),
+                        230, "unknown detail width drags 1:1")
         var s = AnswerColumnDragSession()
-        s.beginIfNeeded(pointerX: 1000, displayedWidth: 200, gain: 2)
-        try expectEqual(s.width(pointerX: 980), 240, "20 pt left grows 40 pt")
-        var plain = AnswerColumnDragSession()
-        plain.beginIfNeeded(pointerX: 1000, displayedWidth: 200)
-        try expectEqual(plain.width(pointerX: 980), 220, "default gain is 1")
+        s.beginIfNeeded(pointerX: 1000, displayedWidth: 200, detailWidth: 1400)
+        try expectEqual(s.width(pointerX: 980), 240, "capped block moves the width twice as fast")
     },
 
     EngineCase("answer-width-centered-block-cap") {

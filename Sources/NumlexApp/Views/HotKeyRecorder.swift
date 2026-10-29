@@ -67,6 +67,7 @@ struct HotKeyRecorder: View {
     private func start() {
         rejection = nil
         recording = true
+        center.setSuspended(true)
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             if event.keyCode == UInt16(kVK_Escape) { stop(); return nil }
             guard let combo = KeyCombo(keyCode: UInt32(event.keyCode),
@@ -85,6 +86,7 @@ struct HotKeyRecorder: View {
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
         recording = false
+        center.setSuspended(false)
     }
 
     private static func modifiers(_ flags: NSEvent.ModifierFlags) -> HotKeyModifiers {
