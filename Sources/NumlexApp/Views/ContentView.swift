@@ -677,6 +677,14 @@ struct ContentView: View {
             // Editor and answer column share the same detail top, so a row's
             // editor-content y equals its answer-content y (modulo the fixed
             // editor top inset) and scroll offsets are directly comparable.
+            // The answer column's EFFECTIVE width: the persisted
+            // preference (140...400) capped by the available detail
+            // width so the editor keeps at least 280 pt. Unknown
+            // detail widths (before first layout) fall back to the
+            // sanitized preference, never negative/NaN.
+            let effectiveAnswerWidth = AnswerColumnGeometry.effectiveWidth(
+                preference: model.settings.styling.answerColumnWidth,
+                availableDetailWidth: detailWidth)
             HStack(spacing: 0) {
                 // r55: ONE weather context per body pass, shared by the
                 // editor and answer evaluations below — the two can
@@ -685,14 +693,6 @@ struct ContentView: View {
                 // r85: ONE geo context per body pass, shared by the
                 // editor and answer evaluations below.
                 let geoContext = model.geoContext
-                // The answer column's EFFECTIVE width: the persisted
-                // preference (140...400) capped by the available detail
-                // width so the editor keeps at least 280 pt. Unknown
-                // detail widths (before first layout) fall back to the
-                // sanitized preference — never negative/NaN.
-                let effectiveAnswerWidth = AnswerColumnGeometry.effectiveWidth(
-                    preference: model.settings.styling.answerColumnWidth,
-                    availableDetailWidth: detailWidth)
                 GeometryReader { _ in
                     let settings = model.settings
                     let sheet = model.selectedSheet
@@ -738,6 +738,13 @@ struct ContentView: View {
                     geoContext: geoContext
                 )
             }
+            // Wide windows: the editor|answer block stops growing at
+            // 720 pt + divider + answer and is centered in the detail
+            // (the outer full-width frame). Narrow windows are below
+            // the block max, so this changes nothing there.
+            .frame(maxWidth: AnswerColumnGeometry.contentBlockMaxWidth(
+                answerWidth: effectiveAnswerWidth))
+            .frame(maxWidth: .infinity)
             .toolbar(removing: .title)
             // Track the ACTUAL detail width (the editor + divider +
             // answer column) so the answer column's window cap is
