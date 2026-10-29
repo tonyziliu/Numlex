@@ -635,7 +635,37 @@ public let answerColumnWidthCases: [EngineCase] = [
                    "rows use the actual width")
         try expect(v.contains("AnswerHoverOutline(\n                                    width: geo.size.width,"),
                    "the hover outline uses the actual width")
-    }
+    },
+
+    EngineCase("answer-width-drag-gain-doubles-only-when-block-is-capped") {
+        try expectEqual(AnswerColumnGeometry.dragGain(detailWidth: 600, answerWidth: 200), 1, "narrow")
+        try expectEqual(AnswerColumnGeometry.dragGain(detailWidth: 1400, answerWidth: 200), 2, "wide")
+        var s = AnswerColumnDragSession()
+        s.beginIfNeeded(pointerX: 1000, displayedWidth: 200, gain: 2)
+        try expectEqual(s.width(pointerX: 980), 240, "20 pt left grows 40 pt")
+        var plain = AnswerColumnDragSession()
+        plain.beginIfNeeded(pointerX: 1000, displayedWidth: 200)
+        try expectEqual(plain.width(pointerX: 980), 220, "default gain is 1")
+    },
+
+    EngineCase("answer-width-centered-block-cap") {
+        try expectEqual(AnswerColumnGeometry.editorMaximumWidth, 720, "editor cap 720 pt")
+        try expectEqual(AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: 200),
+                        921, "720 + 1 + 200")
+        try expectEqual(AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: 400),
+                        1121, "widest column")
+        try expectEqual(AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: 0),
+                        721, "collapsed column")
+        for bad in [Double.nan, .infinity, -.infinity, -50] {
+            try expectEqual(AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: bad),
+                            721, "hostile answer width \(bad) counts as zero")
+        }
+        // Narrow windows sit below the block max, so the cap never binds
+        // and the editor keeps the full remainder as before.
+        let narrow = 800.0
+        try expectEqual(min(narrow, AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: 200)),
+                        narrow, "narrow window unchanged")
+    },
 ]
 
 /// Minimal JSON object decoding helper for the round-trip key check.

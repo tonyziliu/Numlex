@@ -14,7 +14,7 @@ import CoreGraphics
 /// uses `.global`), so the full drag behavior is testable as pure
 /// arithmetic.
 public struct AnswerColumnDragSession {
-    private var start: (width: Double, pointerX: Double)?
+    private var start: (width: Double, pointerX: Double, gain: Double)?
 
     /// A fresh, not-yet-dragging session.
     public init() {}
@@ -28,10 +28,11 @@ public struct AnswerColumnDragSession {
     /// ticks and every model/layout change afterwards cannot alter it.
     public mutating func beginIfNeeded(
         pointerX: Double,
-        displayedWidth: Double
+        displayedWidth: Double,
+        gain: Double = 1
     ) {
         if start == nil {
-            start = (displayedWidth, pointerX)
+            start = (displayedWidth, pointerX, gain.isFinite && gain > 0 ? gain : 1)
         }
     }
 
@@ -43,7 +44,7 @@ public struct AnswerColumnDragSession {
     /// accident.
     public func width(pointerX: Double) -> Double? {
         guard let s = start else { return nil }
-        let delta = pointerX - s.pointerX
+        let delta = (pointerX - s.pointerX) * s.gain
         guard AnswerColumnGeometry.isMaterialDrag(horizontalTranslation: delta)
         else { return nil }
         return AnswerColumnGeometry.width(
@@ -56,7 +57,7 @@ public struct AnswerColumnDragSession {
     /// non-finite.
     public func finalWidth(pointerX: Double) -> Double? {
         guard let s = start else { return nil }
-        let delta = pointerX - s.pointerX
+        let delta = (pointerX - s.pointerX) * s.gain
         guard delta.isFinite else { return nil }
         return AnswerColumnGeometry.width(
             afterDrag: s.width, horizontalTranslation: delta)
@@ -156,5 +157,27 @@ public enum AnswerColumnGeometry {
         }
         let desired = startWidth - horizontalTranslation
         return min(max(desired, minWidth), maxWidth)
+    }
+
+    /// The widest the editor pane grows before the sheet becomes a
+    /// centered block (pt).
+    public static let editorMaximumWidth: CGFloat = 720
+
+    /// The widest the whole editor + divider + answer block may be:
+    /// the capped editor, the divider and the answer column. Unknown
+    /// or negative answer widths count as zero.
+    public static func contentBlockMaxWidth(answerWidth: Double) -> Double {
+        let answer = answerWidth.isFinite ? max(answerWidth, 0) : 0
+        return editorMaximumWidth + dividerWidth + answer
+    }
+
+    /// Pointer-to-width gain for the divider drag. A centered block
+    /// moves its divider by half of any width change, so while the cap
+    /// binds the width must change twice as fast to keep the divider
+    /// under the pointer.
+    public static func dragGain(detailWidth: Double, answerWidth: Double) -> Double {
+        guard detailWidth.isFinite, detailWidth > contentBlockMaxWidth(answerWidth: answerWidth)
+        else { return 1 }
+        return 2
     }
 }
