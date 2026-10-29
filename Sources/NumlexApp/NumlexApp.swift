@@ -69,7 +69,7 @@ struct NumlexApp: App {
     // and the Settings scene so they always stay in sync.
     @State private var model: AppModel
     @State private var clipboard: ClipboardStore
-    @State private var clipboardPopup: ClipboardPopupController
+    @State private var hotKeys: GlobalHotKeyCenter
     /// r97: the FIRST-LAUNCH decision, captured in `init()` BEFORE the
     /// model (and therefore `Persistence.load`/`dataDirectory`) runs, so
     /// "is this a genuinely new install?" is never answered by the app's
@@ -116,7 +116,15 @@ struct NumlexApp: App {
         let clipboard = ClipboardStore()
         _model = State(initialValue: model)
         _clipboard = State(initialValue: clipboard)
-        _clipboardPopup = State(initialValue: ClipboardPopupController(model: model, store: clipboard))
+        let popup = ClipboardPopupController(model: model, store: clipboard)
+        let hotKeys = GlobalHotKeyCenter()
+        hotKeys.onPress = { [weak hotKeys] action in
+            switch action {
+            case .clipboardPopup: popup.toggle()
+            case .toggleApp: hotKeys?.toggleApp()
+            }
+        }
+        _hotKeys = State(initialValue: hotKeys)
     }
 
     /// r98: the curtain stages.
@@ -243,8 +251,9 @@ struct NumlexApp: App {
             themedRoot(launchRoot)
                 .environment(clipboard)
                 // NSApplication does not exist inside App.init, so the
-                // monitor and hotkey start with the first window.
-                .onAppear { clipboard.start(); clipboardPopup.start() }
+                // monitor and hotkeys start with the first window.
+                .onAppear { clipboard.start(); hotKeys.start() }
+                .background(MainWindowOpenerInstaller(center: hotKeys))
                 .environment(\.sidebarToggleHiddenForWelcome,
                              sidebarToggleHiddenForWelcome)
                 // r59: the SwiftUI content minimum allows the COLLAPSED
@@ -418,6 +427,7 @@ struct NumlexApp: App {
 
         Settings {
             themedRoot(NativeSettingsView(model: model))
+                .environment(hotKeys)
         }
         // r90: the Settings window is resizable WITHIN the designed
         // content range (SettingsGeometry's min/ideal/max): `.contentMinSize`

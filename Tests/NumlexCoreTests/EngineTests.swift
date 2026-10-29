@@ -399,4 +399,9 @@ struct EngineTests {
     func snippetCase(`case`: EngineCase) throws {
         try `case`.body()
     }
+
+    @Test(arguments: hotKeyCases)
+    func hotKeyCase(`case`: EngineCase) throws {
+        try `case`.body()
+    }
 }

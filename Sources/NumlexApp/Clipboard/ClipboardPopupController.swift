@@ -8,26 +8,17 @@ private final class ClipboardPanel: NSPanel {
     override var canBecomeKey: Bool { true }
 }
 
-/// Owns the global hotkey and the floating panel it toggles.
+/// Owns the floating clipboard panel the global hotkey toggles.
 @MainActor
 final class ClipboardPopupController {
     private let model: AppModel
     private let store: ClipboardStore
     private var panel: ClipboardPanel?
     private var resignObserver: NSObjectProtocol?
-    private var hotKey: ClipboardHotKey?
 
     init(model: AppModel, store: ClipboardStore) {
         self.model = model
         self.store = store
-    }
-
-    /// Idempotent: every main window calls it on appear. If another app
-    /// owns the hotkey the registration fails and the hotkey stays off.
-    func start() {
-        guard hotKey == nil else { return }
-        let key = ClipboardHotKey { [weak self] in self?.toggle() }
-        if key.register() { hotKey = key }
     }
 
     func toggle() {

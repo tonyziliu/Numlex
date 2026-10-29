@@ -555,6 +555,19 @@ private struct GeneralSettingsPage: View {
                 }
             }
 
+            SettingsGroup(title: L10n.t("hotkeys.group", language: language)) {
+                SettingsRow(title: L10n.t("hotkeys.clipboardPopup", language: language),
+                            detail: L10n.t("hotkeys.cap", language: language),
+                            symbol: "list.clipboard") {
+                    HotKeyRecorder(action: .clipboardPopup, language: language)
+                }
+                SettingsRow(title: L10n.t("hotkeys.toggleApp", language: language),
+                            symbol: "macwindow",
+                            divider: true) {
+                    HotKeyRecorder(action: .toggleApp, language: language)
+                }
+            }
+
             SettingsGroup(title: L10n.t("tax.group", language: language)) {
                 SettingsRow(
                     title: L10n.t("tax.preset", language: language),
