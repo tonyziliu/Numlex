@@ -31,6 +31,9 @@ struct NavigationCommands: Commands {
             Button(t("nav.quickSwitcher")) { context?.showsSwitcher.wrappedValue = true }
                 .keyboardShortcut("k", modifiers: .command)
                 .disabled(context == nil)
+            Button(t("rename")) { context?.model.requestRenameSelectedSheet() }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                .disabled(context == nil)
             Divider()
             Button(t("nav.previousSheet")) { context?.model.selectAdjacent(-1) }
                 .keyboardShortcut("[", modifiers: .command)
@@ -67,6 +70,14 @@ struct NavigationCommands: Commands {
 }
 
 extension AppModel {
+    /// Shows the sheet list and opens the inline rename on the selected sheet.
+    @MainActor
+    func requestRenameSelectedSheet() {
+        guard let id = selectedSheet?.id else { return }
+        sidebarPanel = .sheets
+        renameRequest = id
+    }
+
     /// Shows `panel` in the sidebar and asks it to take keyboard focus.
     @MainActor
     func requestSidebarFocus(_ panel: SidebarPanel) {

@@ -249,6 +249,11 @@ struct SidebarView: View {
         .focusEffectDisabled()
         .focused($sheetListFocused)
         .takesSidebarFocus(.sheets, model: model, focus: $sheetListFocused)
+        .onChange(of: model.renameRequest, initial: true) { _, id in
+            guard let id else { return }
+            model.renameRequest = nil
+            renamingID = id
+        }
         .onKeyPress(keys: [.upArrow, .downArrow, .return]) { press in
             // An inline rename owns its keys.
             guard renamingID == nil else { return .ignored }

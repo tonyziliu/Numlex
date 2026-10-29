@@ -806,7 +806,6 @@ struct ContentView: View {
             // highlight the new one.
             hoveredSourceID = nil
         }
-        .onReceive(NotificationCenter.default.publisher(for: .newSheet)) { _ in model.newSheet() }
         .onReceive(NotificationCenter.default.publisher(for: .importSheet)) { _ in showImport = true }
         .onReceive(NotificationCenter.default.publisher(for: .exportSheet)) { _ in showExport = true }
         .onReceive(NotificationCenter.default.publisher(for: .exportSheetPDF)) { _ in
