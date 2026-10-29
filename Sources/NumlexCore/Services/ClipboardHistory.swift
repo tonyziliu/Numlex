@@ -85,7 +85,12 @@ public struct ClipboardHistory: Codable, Equatable, Sendable {
 
     /// Pinned items first, then the rest, each group in recency order.
     public var displayItems: [ClipboardItem] {
-        items.filter(\.isPinned) + items.filter { !$0.isPinned }
+        snippets + items.filter { !$0.isPinned }
+    }
+
+    /// The pinned items, in recency order. The sidebar Snippets tab lists these.
+    public var snippets: [ClipboardItem] {
+        items.filter(\.isPinned)
     }
 
     /// Case- and diacritic-insensitive substring match over `displayItems`.

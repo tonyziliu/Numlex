@@ -248,16 +248,60 @@ public let clipboardInsertionCases: [EngineCase] = [
     },
 ]
 
+/// Every English key with `prefix` has a non-empty value in all six locales.
+func expectKeysInAllLocales(prefix: String) throws {
+    let keys = L10n.translations[.en]!.keys.filter { $0.hasPrefix(prefix) }
+    try expect(!keys.isEmpty, "english \(prefix) keys present")
+    for language in AppLanguage.allCases {
+        for key in keys {
+            let value = L10n.translations[language]?[key] ?? ""
+            try expect(!value.isEmpty, "\(language) is missing \(key)")
+        }
+    }
+}
+
 public let clipboardLocalizationCases: [EngineCase] = [
     EngineCase("clipboard-strings-exist-in-all-six-locales") {
-        let keys = L10n.translations[.en]!.keys.filter { $0.hasPrefix("clipboard.") }
-        try expect(!keys.isEmpty, "english clipboard keys present")
-        for language in AppLanguage.allCases {
-            for key in keys {
-                let value = L10n.translations[language]?[key] ?? ""
-                try expect(!value.isEmpty, "\(language) is missing \(key)")
-            }
-        }
+        try expectKeysInAllLocales(prefix: "clipboard.")
         try expectEqual(L10n.t("clipboard.title", language: .zh), "剪贴板", "zh title")
+    },
+]
+
+public let snippetCases: [EngineCase] = [
+    EngineCase("snippets-are-the-pinned-items-in-recency-order") {
+        var h = ClipboardHistory()
+        h.record("a"); h.record("b"); h.record("c")
+        try expect(h.snippets.isEmpty, "nothing pinned, no snippets")
+        h.togglePin(h.items.first { $0.text == "a" }!.id)
+        h.togglePin(h.items.first { $0.text == "c" }!.id)
+        try expectEqual(texts(h.snippets), ["c", "a"], "pinned only, newest first")
+        try expectEqual(texts(h.displayItems), ["c", "a", "b"], "clipboard list still pinned first")
+    },
+
+    EngineCase("snippets-unpin-and-remove-drop-the-snippet") {
+        var h = ClipboardHistory()
+        h.record("a"); h.record("b")
+        for item in h.items { h.togglePin(item.id) }
+        h.togglePin(h.items.first { $0.text == "a" }!.id)
+        try expectEqual(texts(h.snippets), ["b"], "unpinned item leaves the snippets")
+        try expect(h.items.contains { $0.text == "a" }, "unpinned item stays in the history")
+        h.remove(h.snippets[0].id)
+        try expect(h.snippets.isEmpty, "removed snippet is gone")
+    },
+
+    EngineCase("snippets-survive-clear-unpinned-and-persist") {
+        let dir = try tempClipboardDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+        var h = ClipboardHistory()
+        h.record("keep"); h.record("drop")
+        h.togglePin(h.items.first { $0.text == "keep" }!.id)
+        h.clear(keepPinned: true)
+        try expect(ClipboardPersistence.save(h, to: dir), "saved")
+        try expectEqual(texts(ClipboardPersistence.load(from: dir).snippets), ["keep"],
+                        "snippets live in clipboard.json")
+    },
+
+    EngineCase("snippet-strings-exist-in-all-six-locales") {
+        try expectKeysInAllLocales(prefix: "snippets.")
     },
 ]

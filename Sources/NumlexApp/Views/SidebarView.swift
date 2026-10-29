@@ -49,8 +49,6 @@ import UniformTypeIdentifiers
 struct SidebarView: View {
     @Bindable var model: AppModel
     @Environment(ClipboardStore.self) private var clipboard
-    /// Transient view state: which panel the sidebar column shows.
-    @State private var showsClipboard = false
     @State private var renamingID: UUID?
     /// The folder tab currently in inline rename (a folder created via
     /// the hover `+` opens straight into it).
@@ -136,19 +134,21 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Picker("", selection: $showsClipboard) {
+            Picker("", selection: $model.sidebarPanel) {
                 Image(systemName: "list.bullet.rectangle")
-                    .help(L10n.t("sheet", language: language)).tag(false)
+                    .help(L10n.t("sheet", language: language)).tag(SidebarPanel.sheets)
+                Image(systemName: "pin")
+                    .help(L10n.t("snippets.title", language: language)).tag(SidebarPanel.snippets)
                 Image(systemName: "list.clipboard")
-                    .help(L10n.t("clipboard.title", language: language)).tag(true)
+                    .help(L10n.t("clipboard.title", language: language)).tag(SidebarPanel.clipboard)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
 
-            if showsClipboard {
-                ClipboardListView(model: model, store: clipboard)
-            } else {
-                sheetsPanel
+            switch model.sidebarPanel {
+            case .sheets: sheetsPanel
+            case .snippets: SnippetsListView(model: model, store: clipboard)
+            case .clipboard: ClipboardListView(model: model, store: clipboard)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

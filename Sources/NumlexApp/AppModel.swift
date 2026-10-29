@@ -8,6 +8,10 @@ extension UTType {
     static let nlx = UTType(filenameExtension: "nlx") ?? .json
 }
 
+enum SidebarPanel: Hashable {
+    case sheets, snippets, clipboard
+}
+
 @Observable
 final class AppModel {
     var sheets: [Sheet] = []
@@ -35,6 +39,8 @@ final class AppModel {
     /// Import destinations, and repairs to `.general` when its folder
     /// goes away. `.none` is only a compatibility fallback.
     var activeGroup: SidebarGroup = .general
+    /// Which panel the sidebar column shows. Presentation-only, never persisted.
+    var sidebarPanel: SidebarPanel = .sheets
 
     /// The folder ID the active tab filters on (nil = General).
     var activeGroupID: UUID? { SheetOrganization.folderID(of: activeGroup) }

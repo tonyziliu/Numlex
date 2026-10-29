@@ -394,4 +394,9 @@ struct EngineTests {
     func clipboardLocalizationCase(`case`: EngineCase) throws {
         try `case`.body()
     }
+
+    @Test(arguments: snippetCases)
+    func snippetCase(`case`: EngineCase) throws {
+        try `case`.body()
+    }
 }
