@@ -635,7 +635,26 @@ public let answerColumnWidthCases: [EngineCase] = [
                    "rows use the actual width")
         try expect(v.contains("AnswerHoverOutline(\n                                    width: geo.size.width,"),
                    "the hover outline uses the actual width")
-    }
+    },
+
+    EngineCase("answer-width-centered-block-cap") {
+        try expectEqual(AnswerColumnGeometry.editorMaximumWidth, 720, "editor cap 720 pt")
+        try expectEqual(AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: 200),
+                        921, "720 + 1 + 200")
+        try expectEqual(AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: 400),
+                        1121, "widest column")
+        try expectEqual(AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: 0),
+                        721, "collapsed column")
+        for bad in [Double.nan, .infinity, -.infinity, -50] {
+            try expectEqual(AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: bad),
+                            721, "hostile answer width \(bad) counts as zero")
+        }
+        // Narrow windows sit below the block max, so the cap never binds
+        // and the editor keeps the full remainder as before.
+        let narrow = 800.0
+        try expectEqual(min(narrow, AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: 200)),
+                        narrow, "narrow window unchanged")
+    },
 ]
 
 /// Minimal JSON object decoding helper for the round-trip key check.

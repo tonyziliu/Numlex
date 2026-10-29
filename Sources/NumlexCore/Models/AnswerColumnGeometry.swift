@@ -157,4 +157,16 @@ public enum AnswerColumnGeometry {
         let desired = startWidth - horizontalTranslation
         return min(max(desired, minWidth), maxWidth)
     }
+
+    /// The widest the editor pane grows before the sheet becomes a
+    /// centered block (pt).
+    public static let editorMaximumWidth: CGFloat = 720
+
+    /// The widest the whole editor + divider + answer block may be:
+    /// the capped editor, the divider and the answer column. Unknown
+    /// or negative answer widths count as zero.
+    public static func contentBlockMaxWidth(answerWidth: Double) -> Double {
+        let answer = answerWidth.isFinite ? max(answerWidth, 0) : 0
+        return editorMaximumWidth + dividerWidth + answer
+    }
 }
