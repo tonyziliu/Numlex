@@ -475,7 +475,7 @@ private struct NewItemCommand: View {
     private func perform() {
         switch model.settings.commandN {
         case .newSheet:
-            NotificationCenter.default.post(name: .newSheet, object: nil)
+            model.newSheet()
         case .newWindow:
             openWindow(id: NumlexApp.mainWindowID)
         }
@@ -587,7 +587,6 @@ extension Notification.Name {
     /// r87: Format > Highlight — the object is a
     /// `HighlightCommandPayload` (nil color = None).
     static let applyHighlight = Notification.Name("numlex.applyHighlight")
-    static let newSheet = Notification.Name("numlex.newSheet")
     static let deleteSheet = Notification.Name("numlex.deleteSheet")
     // Sheet file actions: posted by the File-menu commands above, caught
     // by ContentView's fileImporter/fileExporter. Declared here (not in

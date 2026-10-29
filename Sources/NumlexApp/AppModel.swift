@@ -43,6 +43,8 @@ final class AppModel {
     var sidebarPanel: SidebarPanel = .sheets
     /// One-shot keyboard-focus request for a sidebar panel, consumed by the panel.
     var sidebarFocusRequest: SidebarPanel?
+    /// One-shot request to start the inline rename of a sheet, consumed by the sidebar.
+    var renameRequest: UUID?
 
     /// The folder ID the active tab filters on (nil = General).
     var activeGroupID: UUID? { SheetOrganization.folderID(of: activeGroup) }
