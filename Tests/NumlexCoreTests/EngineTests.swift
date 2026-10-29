@@ -404,4 +404,9 @@ struct EngineTests {
     func hotKeyCase(`case`: EngineCase) throws {
         try `case`.body()
     }
+
+    @Test(arguments: navigationCases)
+    func navigationCase(`case`: EngineCase) throws {
+        try `case`.body()
+    }
 }

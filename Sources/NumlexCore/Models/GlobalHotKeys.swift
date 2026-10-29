@@ -73,10 +73,16 @@ public struct HotKeyBindings: Codable, Equatable, Sendable {
 
     /// Numlex's own menu shortcuts. A global hotkey on one of them would fire
     /// instead of the menu command while Numlex is frontmost.
-    public static let appShortcuts: Set<String> = [
-        "⌘n", "⌘t", "⇧⌘t", "⌘r", "⌘i", "⌘e", "⌘d", "⌘p", "⇧⌘m",
-        "⌘,", "⌘q", "⌘w", "⌘h", "⌘m", "⌘c", "⌘v", "⌘x", "⌘z", "⇧⌘z", "⌘a", "⌃⌘s",
-    ]
+    public static let appShortcuts: Set<String> = {
+        var keys: Set<String> = [
+            "⌘n", "⌘t", "⇧⌘t", "⌘r", "⌘i", "⌘e", "⌘d", "⌘p", "⇧⌘m",
+            "⌘,", "⌘q", "⌘w", "⌘h", "⌘m", "⌘c", "⌘v", "⌘x", "⌘z", "⇧⌘z", "⌘a", "⌃⌘s",
+            "⌘k", "⌘[", "⌘]",
+        ]
+        keys.formUnion((1...9).map { "⌘\($0)" })
+        keys.formUnion(FocusShortcut.allCases.map(\.chord))
+        return keys
+    }()
 
     public subscript(action: HotKeyAction) -> KeyCombo? {
         switch action {

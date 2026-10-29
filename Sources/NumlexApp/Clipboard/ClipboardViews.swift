@@ -11,6 +11,7 @@ struct ClipboardListView: View {
     var onDone: (() -> Void)?
 
     @State private var query = ""
+    @FocusState private var searchFocused: Bool
 
     private var language: AppLanguage { model.settings.language }
     private func t(_ key: String) -> String { L10n.t(key, language: language) }
@@ -23,6 +24,8 @@ struct ClipboardListView: View {
                 TextField(t("clipboard.search"), text: $query)
                     .textFieldStyle(.roundedBorder)
                     .font(Design.label)
+                    .focused($searchFocused)
+                    .takesSidebarFocus(.clipboard, model: model, focus: $searchFocused)
                 optionsMenu
             }
             if !store.history.settings.captureEnabled {

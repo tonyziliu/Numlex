@@ -9,6 +9,7 @@ struct SnippetsListView: View {
     let store: ClipboardStore
 
     @State private var selection: ClipboardItem.ID?
+    @FocusState private var listFocused: Bool
 
     private var language: AppLanguage { model.settings.language }
     private func t(_ key: String) -> String { L10n.t(key, language: language) }
@@ -38,7 +39,11 @@ struct SnippetsListView: View {
             }
             .scrollIndicators(.hidden)
             .focusable()
-            .focusEffectDisabled()
+            .focused($listFocused)
+            .takesSidebarFocus(.snippets, model: model, focus: $listFocused)
+            .onChange(of: listFocused) { _, focused in
+                if focused && selection == nil { selection = snippets.first?.id }
+            }
             .onKeyPress(.upArrow) { move(-1); return .handled }
             .onKeyPress(.downArrow) { move(1); return .handled }
             .onKeyPress(.return) {

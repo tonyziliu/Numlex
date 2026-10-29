@@ -41,6 +41,8 @@ final class AppModel {
     var activeGroup: SidebarGroup = .general
     /// Which panel the sidebar column shows. Presentation-only, never persisted.
     var sidebarPanel: SidebarPanel = .sheets
+    /// One-shot keyboard-focus request for a sidebar panel, consumed by the panel.
+    var sidebarFocusRequest: SidebarPanel?
 
     /// The folder ID the active tab filters on (nil = General).
     var activeGroupID: UUID? { SheetOrganization.folderID(of: activeGroup) }
@@ -1129,6 +1131,20 @@ final class AppModel {
         activeGroup = activeGroup(for: sheets[index].folderID)
         selectedIndex = index
         persist()
+    }
+
+    /// Global indices of the active tab's sheets in sidebar order: the
+    /// order Cmd+1..9 and Cmd+[ / Cmd+] follow.
+    var sidebarOrder: [Int] { sheets(in: activeGroupID).map(\.index) }
+
+    func selectNth(_ n: Int) {
+        if let index = SheetNavigation.nth(n, in: sidebarOrder) { select(index: index) }
+    }
+
+    func selectAdjacent(_ delta: Int) {
+        if let index = SheetNavigation.step(from: selectedIndex, by: delta, in: sidebarOrder) {
+            select(index: index)
+        }
     }
 
     // MARK: Sidebar folders (r39, tab-filtered in r40)

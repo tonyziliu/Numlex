@@ -50,6 +50,7 @@ struct SidebarView: View {
     @Bindable var model: AppModel
     @Environment(ClipboardStore.self) private var clipboard
     @State private var renamingID: UUID?
+    @FocusState private var sheetListFocused: Bool
     /// The folder tab currently in inline rename (a folder created via
     /// the hover `+` opens straight into it).
     @State private var renamingFolderID: UUID?
@@ -244,6 +245,19 @@ struct SidebarView: View {
         .scrollIndicators(.hidden)
         .background(NativeScrollerSuppressor())
         .frame(maxHeight: .infinity)
+        .focusable()
+        .focused($sheetListFocused)
+        .takesSidebarFocus(.sheets, model: model, focus: $sheetListFocused)
+        .onKeyPress(keys: [.upArrow, .downArrow, .return]) { press in
+            // An inline rename owns its keys.
+            guard renamingID == nil else { return .ignored }
+            switch press.key {
+            case .upArrow: model.selectAdjacent(-1)
+            case .downArrow: model.selectAdjacent(1)
+            default: NotebookFocus.focusEditor(in: NSApp.keyWindow)
+            }
+            return .handled
+        }
         // Any deletion path that removes the row currently being
         // renamed clears the stale rename state.
         .onChange(of: model.sheets.map(\.id)) { _, ids in

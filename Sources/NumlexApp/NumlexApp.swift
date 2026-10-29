@@ -249,6 +249,7 @@ struct NumlexApp: App {
     var body: some Scene {
         WindowGroup(id: Self.mainWindowID) {
             themedRoot(launchRoot)
+                .modifier(SheetNavigationHost(model: model, isEnabled: revealStage == .app))
                 .environment(clipboard)
                 // NSApplication does not exist inside App.init, so the
                 // monitor and hotkeys start with the first window.
@@ -411,6 +412,7 @@ struct NumlexApp: App {
             // The focused main-window scene owns this checked View command;
             // Settings and welcome scenes intentionally publish no target.
             MinimalModeCommands(language: model.settings.language)
+            NavigationCommands(language: model.settings.language)
             // The system registers the single Settings… item (⌘,) from the
             // Settings scene automatically; replacing the group here makes
             // macOS 26 render a SECOND item with the same shortcut, which
