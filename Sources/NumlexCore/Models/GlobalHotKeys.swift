@@ -26,10 +26,14 @@ public struct KeyCombo: Codable, Hashable, Sendable {
     public let key: String
 
     /// Nil unless Command, Control or Option is held: a global hotkey made of
-    /// plain or shifted keys would swallow ordinary typing everywhere.
+    /// plain or shifted keys would swallow ordinary typing everywhere. Also nil
+    /// for keys without a printable character (Return, Tab, arrows, function
+    /// keys), which could not be shown.
     public init?(keyCode: UInt32, modifiers: HotKeyModifiers, key: String) {
         let key = key.lowercased()
         guard !key.isEmpty,
+              key.unicodeScalars.allSatisfy({ !CharacterSet.controlCharacters.contains($0)
+                  && !(0xF700...0xF8FF).contains($0.value) }),
               !modifiers.intersection([.command, .control, .option]).isEmpty else { return nil }
         self.keyCode = keyCode
         self.modifiers = modifiers

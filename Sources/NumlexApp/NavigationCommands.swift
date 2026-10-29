@@ -68,9 +68,16 @@ struct NavigationCommands: Commands {
 
 extension AppModel {
     /// Shows `panel` in the sidebar and asks it to take keyboard focus.
+    @MainActor
     func requestSidebarFocus(_ panel: SidebarPanel) {
         sidebarPanel = panel
         sidebarFocusRequest = panel
+        // A panel with nothing focusable (empty Snippets, collapsed sidebar)
+        // never consumes the request; expire it so it cannot fire later.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(500))
+            if self?.sidebarFocusRequest == panel { self?.sidebarFocusRequest = nil }
+        }
     }
 }
 

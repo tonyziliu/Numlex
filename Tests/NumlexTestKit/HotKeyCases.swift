@@ -27,6 +27,8 @@ public let hotKeyCases: [EngineCase] = [
         try expect(KeyCombo(keyCode: 9, modifiers: [], key: "v") == nil, "plain key")
         try expect(KeyCombo(keyCode: 9, modifiers: [.shift], key: "v") == nil, "shift only")
         try expect(KeyCombo(keyCode: 9, modifiers: [.command], key: "") == nil, "no key")
+        try expect(KeyCombo(keyCode: 36, modifiers: [.command], key: "\r") == nil, "Return")
+        try expect(KeyCombo(keyCode: 126, modifiers: [.option], key: "\u{F700}") == nil, "arrow")
         try expect(KeyCombo(keyCode: 9, modifiers: [.option], key: "v") != nil, "option is enough")
         try expectEqual(controlCommandJ.display, "⌃⌘J", "glyphs in system order")
         try expectEqual(optionSpace.display, "⌥ ", "space keeps its character")

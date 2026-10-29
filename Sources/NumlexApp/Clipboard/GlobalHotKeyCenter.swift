@@ -119,13 +119,14 @@ final class GlobalHotKeyCenter {
     /// on screen; otherwise brings it forward, restoring minimized windows
     /// and opening a main window when none is left.
     func toggleApp() {
-        let windows = NSApp.windows.filter { $0.canBecomeMain && ($0.isVisible || $0.isMiniaturized) }
-        if NSApp.isActive, !NSApp.isHidden, windows.contains(where: \.isVisible) {
+        if NSApp.isActive, !NSApp.isHidden, NSApp.windows.contains(where: { $0.canBecomeMain && $0.isVisible }) {
             NSApp.hide(nil)
             return
         }
         NSApp.unhide(nil)
         NSApp.activate()
+        // Read after unhiding: a hidden app's windows report isVisible == false.
+        let windows = NSApp.windows.filter { $0.canBecomeMain && ($0.isVisible || $0.isMiniaturized) }
         guard let window = windows.first(where: \.isVisible) ?? windows.first else {
             openMainWindow?()
             return

@@ -246,6 +246,7 @@ struct SidebarView: View {
         .background(NativeScrollerSuppressor())
         .frame(maxHeight: .infinity)
         .focusable()
+        .focusEffectDisabled()
         .focused($sheetListFocused)
         .takesSidebarFocus(.sheets, model: model, focus: $sheetListFocused)
         .onKeyPress(keys: [.upArrow, .downArrow, .return]) { press in

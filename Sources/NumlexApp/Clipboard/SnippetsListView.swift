@@ -39,6 +39,7 @@ struct SnippetsListView: View {
             }
             .scrollIndicators(.hidden)
             .focusable()
+            .focusEffectDisabled()
             .focused($listFocused)
             .takesSidebarFocus(.snippets, model: model, focus: $listFocused)
             .onChange(of: listFocused) { _, focused in
