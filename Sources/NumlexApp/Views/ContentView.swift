@@ -461,7 +461,7 @@ struct ContentView: View {
                                effectiveWidth: Double) -> some View {
         AnswerColumnResizeHandle(
             displayedWidth: effectiveWidth,
-            detailWidth: detailWidth,
+            detailWidth: 0,
             language: settings.language,
             onChange: { width in
                 // The first live change of a drag snapshots the
@@ -687,6 +687,7 @@ struct ContentView: View {
                 preference: model.settings.styling.answerColumnWidth,
                 availableDetailWidth: detailWidth)
             HStack(spacing: 0) {
+              HStack(spacing: 0) {
                 // r55: ONE weather context per body pass, shared by the
                 // editor and answer evaluations below — the two can
                 // never render different snapshots in one frame.
@@ -738,14 +739,16 @@ struct ContentView: View {
                     weatherContext: weatherContext,
                     geoContext: geoContext
                 )
+              }
+              // Wide windows: the editor|answer block stops growing at
+              // 720 pt + divider + answer and sits against the sidebar;
+              // the answer surface continues to the window edge so the
+              // rail never ends mid-window.
+              .frame(maxWidth: AnswerColumnGeometry.contentBlockMaxWidth(
+                  answerWidth: effectiveAnswerWidth))
+              Color(nsColor: Design.answerSurfaceColor(model.settings.styling.answerColumnSurface))
+                  .frame(maxWidth: .infinity)
             }
-            // Wide windows: the editor|answer block stops growing at
-            // 720 pt + divider + answer and is centered in the detail
-            // (the outer full-width frame). Narrow windows are below
-            // the block max, so this changes nothing there.
-            .frame(maxWidth: AnswerColumnGeometry.contentBlockMaxWidth(
-                answerWidth: effectiveAnswerWidth))
-            .frame(maxWidth: .infinity)
             .toolbar(removing: .title)
             // Track the ACTUAL detail width (the editor + divider +
             // answer column) so the answer column's window cap is
