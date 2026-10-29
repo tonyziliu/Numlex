@@ -70,6 +70,11 @@ struct EngineTests {
         try `case`.body()
     }
 
+    @Test(arguments: mathInfixCases)
+    func mathInfixCase(`case`: EngineCase) throws {
+        try `case`.body()
+    }
+
     @Test(arguments: unitCatalogCases)
     func unitCatalogCase(`case`: EngineCase) throws {
         try `case`.body()
