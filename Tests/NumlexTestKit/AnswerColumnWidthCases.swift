@@ -637,6 +637,17 @@ public let answerColumnWidthCases: [EngineCase] = [
                    "the hover outline uses the actual width")
     },
 
+    EngineCase("answer-width-drag-gain-doubles-only-when-block-is-capped") {
+        try expectEqual(AnswerColumnGeometry.dragGain(detailWidth: 600, answerWidth: 200), 1, "narrow")
+        try expectEqual(AnswerColumnGeometry.dragGain(detailWidth: 1400, answerWidth: 200), 2, "wide")
+        var s = AnswerColumnDragSession()
+        s.beginIfNeeded(pointerX: 1000, displayedWidth: 200, gain: 2)
+        try expectEqual(s.width(pointerX: 980), 240, "20 pt left grows 40 pt")
+        var plain = AnswerColumnDragSession()
+        plain.beginIfNeeded(pointerX: 1000, displayedWidth: 200)
+        try expectEqual(plain.width(pointerX: 980), 220, "default gain is 1")
+    },
+
     EngineCase("answer-width-centered-block-cap") {
         try expectEqual(AnswerColumnGeometry.editorMaximumWidth, 720, "editor cap 720 pt")
         try expectEqual(AnswerColumnGeometry.contentBlockMaxWidth(answerWidth: 200),

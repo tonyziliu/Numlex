@@ -461,6 +461,8 @@ struct ContentView: View {
                                effectiveWidth: Double) -> some View {
         AnswerColumnResizeHandle(
             displayedWidth: effectiveWidth,
+            dragGain: AnswerColumnGeometry.dragGain(detailWidth: detailWidth,
+                                                    answerWidth: effectiveWidth),
             language: settings.language,
             onChange: { width in
                 // The first live change of a drag snapshots the
